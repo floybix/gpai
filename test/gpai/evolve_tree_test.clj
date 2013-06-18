@@ -12,9 +12,11 @@
     (let [fs arith/funcset
           fm (map (juxt identity lang/arity) fs)
           ts (into circle/inputs [0])
+          train-inputs (circle/gen-inputs [1 2.5 3.5] 4)
+          test-inputs (circle/gen-inputs [2 4 5] 5)
           fitness (fn [expr]
                     (let [f (comp pos? (lang/fn-from-expr [circle/inputs] expr))]
-                      (circle/fitness-fn f)))
+                      (circle/fitness-fn train-inputs f)))
           regen (evo/fullymixed-regeneration-fn (partial tree/mutate-subtree fm ts)
                                                 tree/crossover-subtrees
                                                 :select-n 1
@@ -37,4 +39,7 @@
       ;; print out grid of hits/misses
       (let [expr (:best (last (:history soln)))
             f (comp pos? (lang/fn-from-expr '[[r y x]] expr))]
-        (circle/print-solution f)))))
+        (println "TRAINING CASES")
+        (circle/print-solution train-inputs f)
+        (println "TEST CASES")
+        (circle/print-solution test-inputs f)))))

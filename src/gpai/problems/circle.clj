@@ -7,27 +7,27 @@
   (<= (+ (* x x) (* y y))
       (* r r)))
 
-(def test-inputs
-  (for [r [1 2.5 3.5]
-        y (range -4 (inc 4))
-        x (range -4 (inc 4))]
+(defn gen-inputs
+  "Generate a list of input cases with the given circle radiuses 'r'
+   on a square grid 2n+1 along each side."
+  [rs n]
+  (for [r rs
+        y (range (- n) (inc n))
+        x (range (- n) (inc n))]
     [r y x]))
 
-(def test-actual
-  (map actual-fn test-inputs))
-
 (defn fitness-fn
-  [f]
-  (let [test-out (map f test-inputs)]
-    (/ (count (filter true? (map = test-out test-actual)))
-       (count test-inputs))))
+  [inputs f]
+  (/ (count (filter #(= (f %) (actual-fn %))
+                    inputs))
+     (count inputs)))
 
 (defn print-solution
-  [f]
+  [inputs f]
   (let [dat (map (fn [[r y x]] {:r r, :y y, :x x
                                :actual (actual-fn [r y x])
                                :output (f [r y x])})
-                 test-inputs)
+                 inputs)
         hitchar (fn [{:keys [output actual]}]
                   (condp = [output actual]
                     [true true] \O
