@@ -40,9 +40,9 @@
   (when-not (or (nil? x) (nil? y))
     (min x y)))
 
-(defmacro if<
+(defn if<
   [x y a b]
-  `(if (< (or ~x 0) (or ~y 0)) ~a ~b))
+  (if (< (or x 0) (or y 0)) a b))
 
 (def funcset
   "Function symbols in this namespace."

@@ -1,32 +1,37 @@
 (ns gpai.tree
+  "Tree-structured programs.
+   i.e. classical GP."
   (:use gpai.core)
   (:require [clojure.zip :as zip]))
 
+(def ^:dynamic *funcmap*)
+(def ^:dynamic *terminals*)
 (def ^:dynamic *terminal-probability* 0.5)
 (def ^:dynamic *erc-probability* 0.2)
 (def ^:dynamic *erc-range* [0.0 10.0])
 (def ^:dynamic *max-expr-depth* 10)
 
 (defn gen-terminal
-  [terminals]
+  "ERCs are generated according to *erc-probability* and *erc-range*.
+   Otherwise terminals are chosen from *terminals*."
+  []
   (if (< (rand) *erc-probability*)
     (let [[a b] *erc-range*] (+ a (rand (- b a))))
-    (rand-nth terminals)))
+    (rand-nth *terminals*)))
 
 (defn gen-expr
   "Generate a random expression sub-tree. We don't allow terminals at
   the tree root: partly to avoid degenerate cases, also we want to
   use (meta) and can't on raw numbers. Respects *max-expr-depth*."
-  ([funcmap terminals]
-     (gen-expr funcmap terminals 0))
-  ([funcmap terminals from-depth]
+  ([]
+     (gen-expr 0))
+  ([from-depth]
      (if (and (> from-depth 0) ;; terminals not allowed at root
               (or (>= from-depth *max-expr-depth*) ;; limit depth
                   (< (rand) *terminal-probability*)))
-       (gen-terminal terminals)
-       (let [[f n] (rand-nth (seq funcmap))]
-         (list* f (repeatedly n #(gen-expr funcmap terminals
-                                           (inc from-depth))))))))
+       (gen-terminal)
+       (let [[f n] (rand-nth (seq *funcmap*))]
+         (list* f (repeatedly n #(gen-expr (inc from-depth))))))))
 
 (defn expr-replacement-loc
   "Takes a (nested) expression and randomly selects a location that
@@ -46,11 +51,11 @@
 
 (defn mutate-subtree
   "Replaces a randomly selected subtree with a newly generated one."
-  [funcmap terminals expr]
+  [expr]
   (let [loc (expr-replacement-loc expr)
         depth (count (zip/path loc))]
     (-> loc
-        (zip/replace (gen-expr funcmap terminals depth))
+        (zip/replace (gen-expr depth))
         (zip/root))))
 
 (defn crossover-subtrees
