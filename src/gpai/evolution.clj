@@ -16,7 +16,7 @@
       :or {select-n 3, elitism 1, mutation-prob 0.2}}]
   (fn [pop]
     (let [n (count pop)
-          n-mutate (long (* n mutation-prob))
+          n-mutate (long (* (- n elitism) mutation-prob))
           sortd (reverse (sort-by (comp :fitness meta) pop))
           parents (take select-n sortd)
           new-mutant #(mutate (rand-nth parents))
@@ -24,7 +24,7 @@
                                 (rand-nth parents))]
       (concat (take elitism parents)
               (repeatedly n-mutate new-mutant)
-              (repeatedly (- n n-mutate elitism) new-child)))))
+              (repeatedly (- n elitism n-mutate) new-child)))))
 
 (defn summarise-keep-best
   [pop]

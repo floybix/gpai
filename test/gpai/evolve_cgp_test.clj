@@ -16,9 +16,7 @@
               train-inputs (circle/gen-inputs [1 2.5 3.5] 4)
               test-inputs (circle/gen-inputs [2 4 5] 5)
               fitness (fn [gm]
-                        (let [f (fn [args]
-                                  (let [os (cgp/genome-outputs gm args)]
-                                    (pos? (first os))))]
+                        (let [f (comp pos? first (cgp/genome->fn gm))]
                           (circle/fitness-fn train-inputs f)))
               regen (evo/fullymixed-regeneration-fn cgp/mutate
                                                     cgp/mutate
@@ -29,8 +27,8 @@
                                      fitness
                                      regen
                                      evo/summarise-keep-best
-                                     :n-gens 100
-                                     :progress-every 5
+                                     :n-gens 500
+                                     :progress-every 100
                                      :snapshot-secs nil))]
           (is (== 4 (count (:pop soln))) "Final population count")
           (is (vector? (:genes (:best (last (:history soln))))) "Final solution accessible")
@@ -38,11 +36,8 @@
           (is (> (:fit-max (last (:history soln))) 0.8) "Reasonable solution")
           ;; print out grid of hits/misses
           (let [gm (:best (last (:history soln)))
-                f (fn [args]
-                    (let [os (cgp/genome-outputs gm args)]
-                      (pos? (first os))))]
+                f (comp pos? first (cgp/genome->fn gm))]
             (println "TRAINING CASES")
             (circle/print-solution train-inputs f)
             (println "TEST CASES")
-            (circle/print-solution test-inputs f)
-            (cgp/viz-active-genes gm)))))))
+            (circle/print-solution test-inputs f)))))))

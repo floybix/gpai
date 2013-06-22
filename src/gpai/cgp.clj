@@ -144,6 +144,32 @@
     (sh/sh "dot" "-Tsvg" "-o" tmpf tmpdot)
     (br/browse-url (str "file://" tmpf))))
 
+(defn genome->expr
+  [{:keys [genes out-idx inputs] :as gm}]
+  (let [size (count genes)
+        n-in (count inputs)
+        active (sort (seq (active-idx gm)))
+        syms (mapv #(symbol (str "g-" % "_")) (range size))
+        lets (loop [lets []
+                    more (drop-while #(< % n-in) active)]
+               (if-let [i (first more)]
+                 (let [g (nth genes i)
+                       in-idx (map (partial - i) (:in g))
+                       form (if-let [f (:fn g)]
+                              (list* f (map (partial nth syms) in-idx))
+                              (:value g))]
+                   (recur (into lets [(nth syms i) form])
+                          (next more)))
+                 ;; done
+                 lets))
+        args (subvec syms 0 n-in)
+        outs (mapv (partial nth syms) out-idx)]
+    `(fn ~args (let ~lets ~outs))))
+
+(defn genome->fn
+  [gm]
+  (eval (genome->expr gm)))
+
 (defn mutate-gene
   [g i]
   ;; TODO separately change one of the input links, or the function.
