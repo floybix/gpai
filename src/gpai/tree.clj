@@ -9,7 +9,7 @@
 (def ^:dynamic *terminal-probability* 0.5)
 (def ^:dynamic *erc-probability* 0.2)
 (def ^:dynamic *erc-range* [0.0 10.0])
-(def ^:dynamic *max-expr-depth* 10)
+(def ^:dynamic *max-expr-depth* 8)
 
 (defn gen-terminal
   "ERCs are generated according to *erc-probability* and *erc-range*.
@@ -47,8 +47,6 @@
                       (seq (zip/path loc)))]
     (if funcpos? (zip/up loc) loc)))
 
-;(defn trim)
-
 (defn mutate-subtree
   "Replaces a randomly selected subtree with a newly generated one."
   [expr]
@@ -58,11 +56,33 @@
         (zip/replace (gen-expr depth))
         (zip/root))))
 
+(defn trim
+  "Cut off any expressions deeper than *max-expr-depth* by inserting
+  terminals."
+  [expr]
+  (loop [loc (zip/seq-zip (seq expr))]
+    (if (zip/end? loc)
+      (zip/root loc)
+      (let [depth (count (zip/path loc))]
+        (if (and (>= depth *max-expr-depth*)
+                 (sequential? (zip/node loc)))
+          (recur (-> loc
+                     (zip/replace (gen-terminal))
+                     (zip/next)))
+          (recur (zip/next loc)))))))
+
+(defn maxdepth
+  [expr]
+  (->> (zip/seq-zip (seq expr))
+       (iterate zip/next)
+       (take-while (comp not zip/end?))
+       (map (comp count zip/path))
+       (reduce max)))
+
 (defn crossover-subtrees
   "Takes two expressions and swaps a randomly selected subtree between
   them."
   [e1 e2]
-  ;; TODO: trim result to max depth
   (let [loc1 (expr-replacement-loc e1)
         loc2 (expr-replacement-loc e2)
         new1 (-> loc1
@@ -70,9 +90,10 @@
                  (zip/root))
         new2 (-> loc2
                  (zip/replace (zip/node loc1))
-                 (zip/root))]
-    ;; disallow single terminal at root
-    (if (sequential? new1) new1 new2)))
+                 (zip/root))
+        ;; disallow single terminal at root
+        new (if (sequential? new1) new1 new2)]
+    (trim new)))
 
 (defn print-codesizes
   [pop i]
