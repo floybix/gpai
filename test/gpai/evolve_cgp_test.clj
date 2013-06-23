@@ -22,16 +22,16 @@
                                                     cgp/mutate
                                                     :select-n 1
                                                     :mutation-prob 1.0)
-              init-pop (repeatedly 4 #(cgp/rand-genome inn 20 1))
+              init-pop (repeatedly 5 #(cgp/rand-genome inn 100 1))
               soln (time (evo/evolve init-pop
                                      fitness
                                      regen
                                      evo/summarise-keep-best
-                                     :n-gens 500
+                                     :n-gens 1000
                                      :progress-every 100
                                      :snapshot-secs nil))]
-          (is (== 4 (count (:pop soln))) "Final population count")
-          (is (vector? (:genes (:best (last (:history soln))))) "Final solution accessible")
+          (is (== 5 (count (:pop soln))) "Final population count")
+          (is (vector? (:nodes (:best (last (:history soln))))) "Final solution accessible")
           (is (every? number? (map :fit-max (:history soln))) "Fitnesses are numbers")
           (is (> (:fit-max (last (:history soln))) 0.8) "Reasonable solution")
           ;; print out grid of hits/misses

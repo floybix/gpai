@@ -23,18 +23,18 @@
                                                     tree/crossover-subtrees
                                                     :select-n 1
                                                     :mutation-prob 0.9)
-              init-pop (repeatedly 4 tree/gen-expr)
+              init-pop (repeatedly 5 tree/gen-expr)
               soln (time (evo/evolve init-pop
                                      fitness
                                      regen
                                      evo/summarise-keep-best
-                                     :n-gens 500
+                                     :n-gens 1000
                                      :progress (juxt evo/print-progress
                                                      tree/print-codesizes)
                                      :progress-every 100
                                      :snapshot-secs nil))]
-          (is (== 500 (count (:history soln))) "Generation count")
-          (is (== 4 (count (:pop soln))) "Final population count")
+          (is (== 1000 (count (:history soln))) "Generation count")
+          (is (== 5 (count (:pop soln))) "Final population count")
           (is (sequential? (:best (last (:history soln)))) "Final solution accessible")
           (is (every? number? (map :fit-max (:history soln))) "Fitnesses are numbers")
           (is (> (:fit-max (last (:history soln))) 0.8) "Reasonable solution")

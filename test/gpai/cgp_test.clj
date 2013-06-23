@@ -10,19 +10,19 @@
         inn ["a" "b" "c"]]
     (binding [*funcmap* fm]
       (testing "Can generate random graphs."
-        (is (vector? (:in (rand-gene 5))) "Rand gene has inputs")
+        (is (vector? (:in (rand-node 5))) "Random node has inputs")
         (let [gm (rand-genome inn 16 2)]
-          (is (vector? (:genes gm)) "Rand genome has genes")
-          (is (= 16 (count (:genes gm))) "Size of genome as given")))
-      (testing "Calculation of active genes"
+          (is (vector? (:nodes gm)) "Random genome has nodes")
+          (is (= 16 (count (:nodes gm))) "Size of genome as given")))
+      (testing "Calculation of active nodes"
         (let [gm (rand-genome inn 16 2)]
           (is (every? number? (active-idx gm)) "Active list contains numbers")
-          (is (re-seq #" -> " (with-out-str (print-active-genes gm)))
-              "Print active genes in directed dot format")
+          (is (re-seq #" -> " (with-out-str (print-active-nodes gm)))
+              "Print active nodes in directed dot format")
           ))
       (testing "Modify genomes"
         (let [gm (rand-genome inn 16 2)]
-          (is (vector? (:genes (mutate gm))) "Mutate"))))))
+          (is (vector? (:nodes (mutate gm))) "Mutate"))))))
 
 (deftest eval-test
   (let [fs arith/funcset
@@ -37,7 +37,7 @@
 
 (def gm1
   '{:inputs ["a" "b" "c"],
-    :genes [{}
+    :nodes [{}
             {}
             {}
             {:fn gpai.lang.arith/_min_, :in [2 1]}
@@ -57,15 +57,15 @@
 
 (def gm1-expr
   '(clojure.core/fn
-     [g-0_ g-1_ g-2_]
+     [nd-0_ nd-1_ nd-2_]
      (clojure.core/let
-         [g-4_ 6.38965609827303
-          g-6_ 5.79469347837637
-          g-10_ (gpai.lang.arith/_-_ g-2_ g-2_)
-          g-13_ (gpai.lang.arith/_div_ g-2_ g-4_)
-          g-14_ (gpai.lang.arith/_-_ g-10_ g-10_)
-          g-15_ (gpai.lang.arith/_+_ g-6_ g-13_)]
-       [g-14_ g-15_])))
+         [nd-4_ 6.38965609827303
+          nd-6_ 5.79469347837637
+          nd-10_ (gpai.lang.arith/_-_ nd-2_ nd-2_)
+          nd-13_ (gpai.lang.arith/_div_ nd-2_ nd-4_)
+          nd-14_ (gpai.lang.arith/_-_ nd-10_ nd-10_)
+          nd-15_ (gpai.lang.arith/_+_ nd-6_ nd-13_)]
+       [nd-14_ nd-15_])))
 
 (deftest compiler-test
   (let [fs arith/funcset

@@ -3,22 +3,22 @@
    i.e. CGP with 1 row and no n-back limit.
    
    A genotype is a map of the form
-   `{:genes [], :inputs [], :out-idx []}`.
+   `{:nodes [], :inputs [], :out-idx []}`.
 
    The inputs vector defines the number of inputs and contains their
    names (used for display only). The `:out-idx` vector defines the
-   number of outputs and contains the gene indices to use as outputs.
+   number of outputs and contains the node indices to use as outputs.
 
-   Each gene is a map of the form
+   Each node is a map of the form
    `{:fn 'foo, :in [1 4 1 ...]}`
 
-   where :fn gives the function as a symbol; the :in vector points to
-   fn arguments as a number of cells back. The number of arguments
-   must match the arity of the function. Some genes may be generated
-   as Ephemeral Random Constants. These
-   genes have :fn nil and store a :value.
+   where :fn gives the function as a (namespaced) symbol; the :in
+   vector gives pointers to fn arguments as numbers of cells back. The
+   number of arguments must match the arity of the function. Some
+   nodes may represent Ephemeral Random Constants. These nodes
+   have :fn nil, :in empty and store a :value.
 
-  The leading genes are for inputs and have :in nil and :fn nil."
+   The leading nodes are for inputs and have :in nil and :fn nil."
   (:require [clojure.java.shell :as sh]
             [clojure.java.browse :as br]))
 
@@ -26,10 +26,14 @@
   ^:dynamic *funcmap*)
 (def ^:dynamic *erc-probability* 0.2)
 (def ^:dynamic *erc-range* [0.0 10.0])
-(def ^:dynamic *gene-mut-rate* 0.1)
+(def ^:dynamic *gene-mut-rate* 0.03)
 
-(defn rand-gene
-  "Returns a new gene at the given offset (which constrains the
+(defn rand-link
+  [offset]
+  (inc (rand-int offset)))
+
+(defn rand-node
+  "Returns a new node at the given offset (which constrains the
    distance back of input links). ERCs are generated according to
    *erc-probability* and *erc-range*. Otherwise functions are chosen
    from *funcmap*."
@@ -38,126 +42,125 @@
     (let [[a b] *erc-range*
           v (+ a (rand (- b a)))]
       {:fn nil :in [] :value v})
-    (let [[f n] (rand-nth (seq *funcmap*))
-          linkback #(inc (rand-int offset))]
-      {:fn f :in (vec (repeatedly n linkback))})))
+    (let [[f n] (rand-nth (seq *funcmap*))]
+      {:fn f :in (vec (repeatedly n #(rand-link offset)))})))
 
 (defn rand-genome
   [inputs size n-out]
   (let [n-in (count inputs)
-        in-genes (repeat n-in {})
-        fn-genes (map rand-gene (range n-in size))]
+        in-nodes (repeat n-in {})
+        fn-nodes (map rand-node (range n-in size))]
     {:inputs (vec inputs)
-     :genes (vec (concat in-genes fn-genes))
+     :nodes (vec (concat in-nodes fn-nodes))
      :out-idx (vec (repeatedly n-out #(rand-nth (range n-in size))))}))
 
 (defn active-idx
-  "Returns the set of indices corresponding to active genes, i.e.
-   those that the current output genese depend on."
-  [{:keys [genes out-idx inputs]}]
+  "Returns the set of indices corresponding to active nodes, i.e.
+   those that the current output genes depend on."
+  [{:keys [nodes out-idx inputs]}]
   (loop [act (set out-idx)
          more (set out-idx)]
     (if-let [i (first more)]
       (if (>= i (count inputs))
-        ;; function gene
-        (let [g (nth genes i)
-              in-idx (map (partial - i) (:in g))]
+        ;; function node
+        (let [nd (nth nodes i)
+              in-idx (map (partial - i) (:in nd))]
           (recur (into act in-idx)
                  (into (disj more i) in-idx)))
-        ;; input gene
+        ;; input node
         (recur act (disj more i)))
       ;; done
       act)))
 
 (defn eval-genome
   "Takes a vector of input values. Associates values with all active
-  genes by calling the respective functions, storing the result in
-  :value."
-  [{:keys [genes out-idx inputs] :as gm} input-vals]
+  nodes by calling the respective functions, storing the result in
+  :value. Returns the vector of nodes."
+  [{:keys [nodes out-idx inputs] :as gm} input-vals]
   (let [n-in (count inputs)
         active (sort (seq (active-idx gm)))
-        in-genes (map #(hash-map :value %) input-vals)
-        gs (apply assoc genes (interleave (range n-in)
-                                          in-genes))]
-    (loop [gs gs
+        in-nodes (map #(hash-map :value %) input-vals)
+        nds (apply assoc nodes (interleave (range n-in)
+                                          in-nodes))]
+    (loop [nds nds
            to-eval (drop-while #(< % n-in) active)]
       (if-let [i (first to-eval)]
-        (let [g (nth gs i)
-              in-idx (map (partial - i) (:in g))
-              invals (map #(get-in gs [% :value]) in-idx)
-              v (if-let [f (:fn g)]
+        (let [nd (nth nds i)
+              in-idx (map (partial - i) (:in nd))
+              invals (map #(get-in nds [% :value]) in-idx)
+              v (if-let [f (:fn nd)]
                   (apply (resolve f) invals)
-                  (:value g))]
-          (recur (assoc-in gs [i :value] v)
+                  (:value nd))]
+          (recur (assoc-in nds [i :value] v)
                  (next to-eval)))
         ;; done
-        gs))))
+        nds))))
 
 (defn genome-outputs
   "Evaluates and returns the genome outputs using given input values."
-  [{:keys [genes out-idx inputs] :as gm} input-vals]
-  (let [gs (eval-genome gm input-vals)]
-    (map #(get-in gs [% :value]) out-idx)))
+  [{:keys [nodes out-idx inputs] :as gm} input-vals]
+  (let [nds (eval-genome gm input-vals)]
+    (mapv #(get-in nds [% :value]) out-idx)))
 
-(defn print-active-genes
-  "Prints the graph of active genes in DOT format."
-  [{:keys [genes out-idx inputs] :as gm}]
+(defn print-active-nodes
+  "Prints the graph of active nodes in DOT format."
+  [{:keys [nodes out-idx inputs] :as gm}]
   (let [n-in (count inputs)
         active (sort (seq (active-idx gm)))
-        pr-gene (fn [i nm]
-                  (println (format "g%d [label=\"%s\"];"
+        pr-node (fn [i nm]
+                  (println (format "nd%d [label=\"%s\"];"
                                    i (str nm))))
-        pr-ingene (fn [i nm]
-                    (println (format "g%d [label=\"%s\",shape=box];"
-                                     i (str nm))))
+        pr-in-node (fn [i nm]
+                     (println (format "nd%d [label=\"%s\",shape=box];"
+                                      i (str nm))))
         pr-link (fn [i1 i2 j]
-                  (println (format "g%d -> g%d [label=%d];"
+                  (println (format "nd%d -> nd%d [label=%d];"
                                    i1 i2 j)))]
-    (println "digraph activegenes {")
+    (println "digraph activenodes {")
     (println "ordering=out;")
-    (dorun (map-indexed pr-ingene inputs))
+    (dorun (map-indexed pr-in-node inputs))
     (doseq [i active
             :when (>= i n-in)]
-      (let [g (nth genes i)
-            in-idx (map (partial - i) (:in g))
-            nm (if (:fn g) (name (:fn g))
-                   (format "%.2f" (:value g)))]
-        (pr-gene i nm)
+      (let [nd (nth nodes i)
+            in-idx (map (partial - i) (:in nd))
+            nm (if (:fn nd) (name (:fn nd))
+                   (format "%.2f" (:value nd)))]
+        (pr-node i nm)
         (dorun (map pr-link in-idx (repeat i)
                     (range (count in-idx))))))
     ;(println "out [label=\"output(s)\",shape=plaintext];")
     (println "node [shape=plaintext];")
     (dorun (map-indexed (fn [j i]
-                          (-> (format "g%d -> out%d [style=dashed];" i j)
+                          (-> (format "nd%d -> out%d [style=dashed];" i j)
                               println))
                         out-idx))
     (println "}")))
 
-(defn viz-active-genes
-  "Generates an SVG graphic of the active genes graph and opens it.
+(defn viz-active-nodes
+  "Generates an SVG graphic of the active nodes graph and opens it.
    Executes the `dot` program, part of Graphviz."
   [gm]
-  (let [s (with-out-str (print-active-genes gm))
-        tmpf "/tmp/gpai.active-genes.svg"
+  (let [s (with-out-str (print-active-nodes gm))
+        tmpf "/tmp/gpai.active-nodes.svg"
         tmpdot (str tmpf ".dot")]
     (spit tmpdot s)
     (sh/sh "dot" "-Tsvg" "-o" tmpf tmpdot)
     (br/browse-url (str "file://" tmpf))))
 
 (defn genome->expr
-  [{:keys [genes out-idx inputs] :as gm}]
-  (let [size (count genes)
+  [{:keys [nodes out-idx inputs] :as gm}]
+  (let [size (count nodes)
         n-in (count inputs)
         active (sort (seq (active-idx gm)))
-        syms (mapv #(symbol (str "g-" % "_")) (range size))
+        syms (mapv #(symbol (str "nd-" % "_")) (range size))
         lets (loop [lets []
                     more (drop-while #(< % n-in) active)]
                (if-let [i (first more)]
-                 (let [g (nth genes i)
-                       in-idx (map (partial - i) (:in g))
-                       form (if-let [f (:fn g)]
+                 (let [nd (nth nodes i)
+                       in-idx (map (partial - i) (:in nd))
+                       form (if-let [f (:fn nd)]
                               (list* f (map (partial nth syms) in-idx))
-                              (:value g))]
+                              (:value nd))]
                    (recur (into lets [(nth syms i) form])
                           (next more)))
                  ;; done
@@ -170,30 +173,44 @@
   [gm]
   (eval (genome->expr gm)))
 
-(defn mutate-gene
-  [g i]
-  ;; TODO separately change one of the input links, or the function.
-  ;(let [[f n] (rand-nth (seq *funcmap*))])
-  (rand-gene i))
+(defn mutate-function-gene
+  [nd i]
+  (let [nnd (rand-node i)
+        k (count (:in nd))
+        nk (count (:in nnd))
+        in (if (<= nk k)
+             ;; new args are a subset of old args
+             (subvec (:in nd) 0 nk)
+             ;; new args need extras beyond old args
+             (into (:in nd) (subvec (:in nnd) k)))]
+    (assoc nnd :in in)))
 
 (defn mutate
   "Mutates each gene and output index with probability
    *gene-mut-rate*."
-  [{:keys [genes out-idx inputs] :as gm}]
+  [{:keys [nodes out-idx inputs] :as gm}]
   (let [n-in (count inputs)
-        gs (loop [i n-in
-                  gs genes]
-             (if (< i (count genes))
-               (if (< (rand) *gene-mut-rate*)
-                 (let [ng (mutate-gene (nth gs i) i)]
-                   (recur (inc i) (assoc gs i ng)))
-                 ;; no change
-                 (recur (inc i) gs))
-               ;; done
-               gs))
+        nds (loop [i n-in
+                   nds nodes]
+              (if (< i (count nodes))
+                (if (< (rand) *gene-mut-rate*)
+                  ;; mutate function
+                  (let [nnd (mutate-function-gene (nth nds i) i)]
+                    (recur (inc i) (assoc nds i nnd)))
+                  ;; otherwise, possibly mutate input links
+                  (let [in (get-in nds [i :in])
+                        m?s (repeatedly (count in) #(< (rand) *gene-mut-rate*))]
+                    (if (some true? m?s)
+                      (let [nin (mapv (fn [m? x] (if m? (rand-link i) x))
+                                      m?s in)]
+                        (recur (inc i) (assoc-in nds [i :in] nin)))
+                      ;; no mutations to this node
+                      (recur (inc i) nds))))
+                ;; done
+                nds))
         oi (mapv (fn [i]
                    (if (< (rand) *gene-mut-rate*)
-                     (rand-nth (range n-in (count genes)))
+                     (rand-nth (range n-in (count nodes))) ;; exclude inputs
                      i))
                  out-idx)]
-    (assoc gm :genes gs :out-idx oi)))
+    (assoc gm :nodes nds :out-idx oi)))
