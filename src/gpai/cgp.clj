@@ -25,7 +25,7 @@
 (def ^{:doc "Map of functions (as namespaced symbols) to their arity."}
   ^:dynamic *funcmap*)
 (def ^:dynamic *erc-probability* 0.2)
-(def ^:dynamic *erc-range* [0.0 10.0])
+(def ^:dynamic *erc-generator* #(rand 10.0))
 (def ^:dynamic *gene-mut-rate* 0.03)
 
 (defn rand-link
@@ -35,12 +35,11 @@
 (defn rand-node
   "Returns a new node at the given offset (which constrains the
    distance back of input links). ERCs are generated according to
-   *erc-probability* and *erc-range*. Otherwise functions are chosen
-   from *funcmap*."
+   *erc-probability* by calling *erc-generator*. Otherwise functions
+   are chosen from *funcmap*."
   [offset]
   (if (< (rand) *erc-probability*)
-    (let [[a b] *erc-range*
-          v (+ a (rand (- b a)))]
+    (let [v (*erc-generator*)]
       {:fn nil :in [] :value v})
     (let [[f n] (rand-nth (seq *funcmap*))]
       {:fn f :in (vec (repeatedly n #(rand-link offset)))})))

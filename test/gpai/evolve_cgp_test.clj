@@ -9,12 +9,11 @@
 (deftest evolution-test
   (testing "Can evolve a solution using cgp. Classify points as in
   or out of a circle of given radius."
-    (let [fs arith/funcset
+    (let [fs arith/funcset-real
           fm (map (juxt identity lang/arity) fs)]
       (binding [cgp/*funcmap* fm]
         (let [inn (mapv str circle/inputs)
               train-inputs (circle/gen-inputs [1 2.5 3.5] 4)
-              test-inputs (circle/gen-inputs [2 4 5] 5)
               fitness (fn [gm]
                         (let [f (comp pos? first (cgp/genome->fn gm))]
                           (circle/fitness-fn train-inputs f)))
@@ -37,7 +36,4 @@
           ;; print out grid of hits/misses
           (let [gm (:best (last (:history soln)))
                 f (comp pos? first (cgp/genome->fn gm))]
-            (println "TRAINING CASES")
-            (circle/print-solution train-inputs f)
-            (println "TEST CASES")
-            (circle/print-solution test-inputs f)))))))
+            (circle/print-solution train-inputs f)))))))

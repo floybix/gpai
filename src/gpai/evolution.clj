@@ -60,7 +60,8 @@
      derived by mutation or crossover.
    * summarise function is applied to the fitness-evaluated population every
      generation and the result appended to a history vector which is returned.
-   * There are `:n-gens` generations.
+   * The evolution terminates after fitness reaches `:target`, or otherwise
+     after `:n-gens` generations.
    * Every `:snapshot-secs` seconds (5 mins) the state is written out to a file
      `:snapshot-out` defaulting to \"snapshot-out.edn\". The value is a map with
      same structure as the final return value - see below.
@@ -75,8 +76,10 @@
    * :i generation number.
    "
   [init-pop fitness regenerate summarise
-   & {:keys [n-gens snapshot-secs snapshot-out progress progress-every map-fn]
-      :or {n-gens 100
+   & {:keys [target n-gens snapshot-secs snapshot-out progress progress-every
+             map-fn]
+      :or {target Double/POSITIVE_INFINITY
+           n-gens 100
            snapshot-secs (* 5 60)
            snapshot-out "snapshot-out.edn"
            progress #'print-progress
@@ -99,13 +102,19 @@
                 (pr {:pop pop :history history :i i})
                 (flush)))))
         (if (<= i n-gens)
-          (let [evald-pop (map-fn eval-fitness pop)]
+          (let [evald-pop (map-fn eval-fitness pop)
+                newhistory (conj history (summarise evald-pop))
+                maxfit (reduce max (map (comp :fitness meta) evald-pop))]
             (when (or (== i 1)
-                      (zero? (mod i progress-every)))
+                      (zero? (mod i progress-every))
+                      (>= maxfit target))
               (progress evald-pop i))
-            (recur (regenerate evald-pop)
-                   (conj history (summarise evald-pop))
-                   (inc i)
-                   (if do-snapshot? t snapshot-t)))
+            (if (>= maxfit target)
+              ;; reached target fitness
+              {:pop evald-pop :history newhistory :i i}
+             (recur (regenerate evald-pop)
+                    newhistory
+                    (inc i)
+                    (if do-snapshot? t snapshot-t))))
           ;; finished
           {:pop pop :history history :i i})))))

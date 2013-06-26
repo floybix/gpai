@@ -5,7 +5,7 @@
             [gpai.lang.core :as lang]))
 
 (deftest graph-test
-  (let [fs arith/funcset
+  (let [fs arith/funcset-real
         fm (map (juxt identity lang/arity) fs)
         inn ["a" "b" "c"]]
     (binding [*funcmap* fm]
@@ -25,7 +25,7 @@
           (is (vector? (:nodes (mutate gm))) "Mutate"))))))
 
 (deftest eval-test
-  (let [fs arith/funcset
+  (let [fs arith/funcset-real
         fm (map (juxt identity lang/arity) fs)
         inn ["a" "b" "c"]]
     (binding [*funcmap* fm]
@@ -68,7 +68,7 @@
        [nd-14_ nd-15_])))
 
 (deftest compiler-test
-  (let [fs arith/funcset
+  (let [fs arith/funcset-real
         fm (map (juxt identity lang/arity) fs)
         inn ["a" "b" "c"]]
     (binding [*funcmap* fm]

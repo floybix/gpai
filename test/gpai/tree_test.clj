@@ -5,7 +5,7 @@
             [gpai.lang.core :as lang]))
 
 (deftest expressions-test
-  (let [fs arith/funcset
+  (let [fs arith/funcset-real
         fm (map (juxt identity lang/arity) fs)
         ts '[a b c 0]]
     (binding [*terminals* ts
@@ -22,7 +22,7 @@
             "Crossover")))))
 
 (deftest eval-test
-  (let [fs arith/funcset
+  (let [fs arith/funcset-real
         fm (map (juxt identity lang/arity) fs)
         ts '[a b c 0]]
     (binding [*terminals* ts

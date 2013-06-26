@@ -8,15 +8,15 @@
 (def ^:dynamic *terminals*)
 (def ^:dynamic *terminal-probability* 0.5)
 (def ^:dynamic *erc-probability* 0.2)
-(def ^:dynamic *erc-range* [0.0 10.0])
+(def ^:dynamic *erc-generator* #(rand 10.0))
 (def ^:dynamic *max-expr-depth* 8)
 
 (defn gen-terminal
-  "ERCs are generated according to *erc-probability* and *erc-range*.
+  "ERCs are generated according to *erc-probability* by calling *erc-generator*.
    Otherwise terminals are chosen from *terminals*."
   []
   (if (< (rand) *erc-probability*)
-    (let [[a b] *erc-range*] (+ a (rand (- b a))))
+    (*erc-generator*)
     (rand-nth *terminals*)))
 
 (defn gen-expr
