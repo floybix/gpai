@@ -20,7 +20,7 @@
     (is (== -5 (_min_ -3 -5)) "Min")
     (is (nil? (_min_ nil 0)) "Min nil"))
   (testing "Control functions."
-    (is (= :true (if< 0 1 :true :false)) "If< true branch")
-    (is (= :false (if< 1 0 :true :false)) "If< false branch")
-    (is (= :false (if< 1 1 :true :false)) "If< strict comparison")
-    (is (= :true (if< -1 nil :true :false)) "If< nil compared as 0")))
+    (is (= :true (_if<_ 0 1 :true :false)) "If< true branch")
+    (is (= :false (_if<_ 1 0 :true :false)) "If< false branch")
+    (is (= :false (_if<_ 1 1 :true :false)) "If< strict comparison")
+    (is (= :true (_if<_ -1 nil :true :false)) "If< nil compared as 0")))

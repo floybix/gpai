@@ -46,9 +46,18 @@
   (when-not (or (nil? x) (nil? y))
     (min x y)))
 
-(defn if<
+(defn _max_
+  [x y]
+  (when-not (or (nil? x) (nil? y))
+    (max x y)))
+
+(defn _if<_
   [x y a b]
   (if (< (or x 0) (or y 0)) a b))
+
+(defn _if=_
+  [x y a b]
+  (if (== (or x 0) (or y 0)) a b))
 
 (def funcset-real
   "Function symbols for real arithmetic."
@@ -59,10 +68,12 @@
      _div_
      _mod_
      _min_
-     if<})
+     _max_
+     _if<_})
 
 (def funcset-int
   "Function symbols for integer arithmetic."
-  (conj (disj funcset-real `_div_)
-        `_quot_))
+  (into (disj funcset-real `_div_)
+        `#{_quot_
+           _if=_}))
 

@@ -24,15 +24,14 @@
                                                     cgp/mutate
                                                     :select-n 1
                                                     :mutation-prob 1.0)
-              init-pop (repeatedly 5 #(cgp/rand-genome inn 100 1))
-              soln (time (evo/evolve init-pop
+              init-popn (repeatedly 5 #(cgp/rand-genome inn 100 1))
+              soln (time (evo/evolve init-popn
                                      fitness
                                      regen
-                                     evo/summarise-keep-best
-                                     :target 1.0
-                                     :n-gens 3000
-                                     :progress-every 1000
-                                     :snapshot-secs nil))]
+                                     {:target 1.0
+                                      :n-gens 3000
+                                      :progress-every 1000
+                                      :snapshot-secs nil}))]
           (:fit-max (last (:history soln)))))))
 
 (deftest even-3-parity-test
