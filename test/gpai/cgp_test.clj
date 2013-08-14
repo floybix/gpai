@@ -1,39 +1,36 @@
 (ns gpai.cgp-test
-  (:use clojure.test
-        gpai.cgp)
-  (:require [gpai.lang.arith :as arith]
-            [gpai.lang.core :as lang]))
+  (:use clojure.test)
+  (:require [gpai.cgp :refer :all]
+            [gpai.lang.arith :as arith]
+            [gpai.utils :refer [arity]]))
 
 (deftest graph-test
   (let [fs arith/funcset-real
-        fm (map (juxt identity lang/arity) fs)
-        inn ["a" "b" "c"]]
-    (binding [*funcmap* fm]
-      (testing "Can generate random graphs."
-        (is (vector? (:in (rand-node 5))) "Random node has inputs")
-        (let [gm (rand-genome inn 16 2)]
-          (is (vector? (:nodes gm)) "Random genome has nodes")
-          (is (= 16 (count (:nodes gm))) "Size of genome as given")))
-      (testing "Calculation of active nodes"
-        (let [gm (rand-genome inn 16 2)]
-          (is (every? number? (active-idx gm)) "Active list contains numbers")
-          (is (re-seq #" -> " (with-out-str (print-active-nodes gm)))
-              "Print active nodes in directed dot format")
-          ))
-      (testing "Modify genomes"
-        (let [gm (rand-genome inn 16 2)]
-          (is (vector? (:nodes (mutate gm))) "Mutate"))))))
+        lang (map (juxt identity arity) fs)
+        inm ["a" "b" "c"]]
+    (testing "Can generate random graphs."
+      (is (vector? (:in (rand-node 5 lang {}))) "Random node has inputs")
+      (let [gm (rand-genome inm 16 2 lang {})]
+        (is (vector? (:nodes gm)) "Random genome has nodes")
+        (is (= 16 (count (:nodes gm))) "Size of genome as given")))
+    (testing "Calculation of active nodes"
+      (let [gm (rand-genome inm 16 2 lang {})]
+        (is (every? number? (active-idx gm)) "Active list contains numbers")
+        (is (re-seq #" -> " (with-out-str (print-active-nodes gm)))
+            "Print active nodes in directed dot format")))
+    (testing "Modify genomes"
+      (let [gm (rand-genome inm 16 2 lang {})]
+        (is (vector? (:nodes (mutate gm))) "Mutate")))))
 
 (deftest eval-test
   (let [fs arith/funcset-real
-        fm (map (juxt identity lang/arity) fs)
-        inn ["a" "b" "c"]]
-    (binding [*funcmap* fm]
-      (testing "Eval generated expressions as a function"
-        (let [gm (rand-genome inn 16 2)]
-          (is (every? number?
-                      (let [f (fn [& args] (genome-outputs gm args))]
-                        (f 1 2 3))) "Evaluates to numbers"))))))
+        lang (map (juxt identity arity) fs)
+        inm ["a" "b" "c"]]
+    (testing "Eval generated expressions as a function"
+      (let [gm (rand-genome inm 16 2 lang {})]
+        (is (every? number?
+                    (let [f (fn [& args] (genome-outputs gm args))]
+                      (f 1 2 3))) "Evaluates to numbers")))))
 
 (def gm1
   '{:inputs ["a" "b" "c"],
@@ -69,9 +66,8 @@
 
 (deftest compiler-test
   (let [fs arith/funcset-real
-        fm (map (juxt identity lang/arity) fs)
-        inn ["a" "b" "c"]]
-    (binding [*funcmap* fm]
-      (let [gm (rand-genome inn 16 2)]
-        (is (= gm1-expr (genome->expr gm1))
-            "Compiled genome expression matches static example")))))
+        lang (map (juxt identity arity) fs)
+        inm ["a" "b" "c"]]
+    (let [gm (rand-genome inm 16 2 lang {})]
+      (is (= gm1-expr (genome->expr gm1))
+          "Compiled genome expression matches static example"))))

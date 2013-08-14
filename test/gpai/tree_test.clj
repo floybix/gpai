@@ -1,35 +1,27 @@
 (ns gpai.tree-test
-  (:use clojure.test
-        gpai.tree)
-  (:require [gpai.lang.arith :as arith]
-            [gpai.lang.core :as lang]))
+  (:use clojure.test)
+  (:require [gpai.tree :refer :all]
+            [gpai.lang.arith :as arith]
+            [gpai.utils :refer [arity]]))
 
 (deftest expressions-test
-  (let [fs arith/funcset-real
-        fm (map (juxt identity lang/arity) fs)
-        ts '[a b c 0]]
-    (binding [*terminals* ts
-              *funcmap* fm]
-      (testing "Generate random expressions."
-        (is (let [t (gen-terminal)]
-             (or (number? t) (some #{t} ts))) "Terminal in set or ERC")
-        (is (seq (gen-expr)) "Gen expr gives a list"))
-      (testing "Modify expressions."
-        (is (seq (mutate-subtree (gen-expr)))
-            "Mutate")
-        (is (seq (crossover-subtrees (gen-expr)
-                                     (gen-expr)))
-            "Crossover")))))
+  (let [fs (conj arith/funcset-real 0)
+        lang (map (juxt identity arity) fs)
+        ins '[a b c]]
+    (testing "Generate random expressions."
+      (is (let [t (gen-terminal ins {})]
+            (or (number? t) (some #{t} ins))) "Terminal in set or ERC")
+      (is (seq (gen-expr lang ins {})) "Gen expr gives a list"))
+    (testing "Modify expressions."
+      (let [gm (rand-genome ins lang {})]
+        (is (seq (:expr (mutate-subtree gm))) "Mutate")
+        (is (seq (:expr (crossover-subtrees gm gm))) "Crossover")))))
 
 (deftest eval-test
-  (let [fs arith/funcset-real
-        fm (map (juxt identity lang/arity) fs)
-        ts '[a b c 0]]
-    (binding [*terminals* ts
-              *funcmap* fm]
-      (testing "Eval generated expressions as a function"
-        (is (function? (lang/fn-from-expr '[a b c] (gen-expr)))
-            "Generate function")
-        (is (number?
-             (let [f (lang/fn-from-expr '[a b c] (gen-expr))]
-               (or (f 1 2 3) 0))) "Evaluates to a number or nil")))))
+  (let [fs (conj arith/funcset-real 0)
+        lang (map (juxt identity arity) fs)
+        ins '[a b c]]
+    (testing "Eval generated expressions as a function"
+      (let [f (genome->fn (rand-genome ins lang {}))]
+        (is (function? f) "Generate function")
+        (is (number? (or (f 1 2 3) 0)) "Evaluates to a number or nil")))))

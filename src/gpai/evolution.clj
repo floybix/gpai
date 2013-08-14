@@ -1,6 +1,6 @@
 (ns gpai.evolution
-  (:use gpai.core)
-  (:require [clojure.java.io :as io]))
+  (:require [gpai.utils :as utils]
+            [clojure.java.io :as io]))
 
 (defn fullymixed-regeneration-fn
   "Returns a regeneration function taking a fitness-evaluated
@@ -33,7 +33,7 @@
         fso (map (comp :fitness meta) sortd)
         fit-max (last fso)
         fit-min (first fso)
-        fit-med (median fso)
+        fit-med (utils/median fso)
         best (last sortd)]
     {:fit-max fit-max
      :fit-min fit-min
@@ -46,7 +46,7 @@
         fso (sort fs)
         fit-max (last fso)
         fit-min (first fso)
-        fit-med (median fso)]
+        fit-med (utils/median fso)]
     (println (format "Gen %d: fitnesses [ %+8.3f  %+8.3f  %+8.3f ]"
                      i (double fit-min) (double fit-med) (double fit-max)))))
 

@@ -1,57 +1,80 @@
 (ns gpai.cgp
   "General graph-structured programs.
-   i.e. CGP with 1 row and no n-back limit.
+   i.e. Cartesian Genetic Programming with 1 row and no n-back limit.
    
    A genotype is a map of the form
-   `{:nodes [], :inputs [], :out-idx []}`.
+   `{:nodes [], :inputs [], :out-idx [], :lang [], :options {}}`.
 
-   The inputs vector defines the number of inputs and contains their
-   names (used for display only). The `:out-idx` vector defines the
-   number of outputs and contains the node indices to use as outputs.
+   The lengths of the `:inputs` and `:out-idx` vectors define the
+   number of inputs and outputs, respectively. The `:inputs` vector
+   contains the names of inputs (used for display only). The
+   `:out-idx` vector contains the node indices to use as outputs.
 
-   Each node is a map of the form
+   The `:lang` vector contains the available functions and constants.
+   Each element must itself be a vector, with functions given as
+   [fn-symbol arity], and constants as [value nil] or just [value].
+   Function arities can be looked up with `gpai.utils/arity` which
+   also returns nil for non-symbols.
+
+   Each node is a map like
    `{:fn 'foo, :in [1 4 1 ...]}`
 
-   where :fn gives the function as a (namespaced) symbol; the :in
-   vector gives pointers to fn arguments as numbers of cells back. The
-   number of arguments must match the arity of the function. Some
-   nodes may represent Ephemeral Random Constants. These nodes
-   have :fn nil, :in empty and store a :value.
+   where :fn gives the node function as a namespaced symbol; the :in
+   vector gives pointers to fn arguments as a number of cells back.
+   The number of arguments must match the arity of the node function.
 
-   The leading nodes are for inputs and have :in nil and :fn nil."
+   Some nodes may represent constants. These nodes have :fn nil, :in
+   empty and instead store a `:value`.
+
+   The leading nodes are for inputs and have :in nil and :fn nil.
+
+   The `:options` map can hold parameters passed on to generation and
+   mutation functions:
+   * :gene-mut-rate point mutation probability for each
+     gene (including function gene and input genes at each node) and
+     output index (default 0.03).
+   * :erc-prob point probability of generating an Ephemeral Random
+     Constant (ERC) as opposed to an input symbol given that we are
+     generating a terminal (default 0.0).
+   * :erc-gen (default #(rand 10.0)) a function of no arguments to
+     generate an ERC."
   (:require [clojure.java.shell :as sh]
             [clojure.java.browse :as br]))
 
-(def ^{:doc "Map of functions (as namespaced symbols) to their arity."}
-  ^:dynamic *funcmap*)
-(def ^:dynamic *erc-probability* 0.2)
-(def ^:dynamic *erc-generator* #(rand 10.0))
-(def ^:dynamic *gene-mut-rate* 0.03)
-
-(defn rand-link
+(defn- rand-link
   [offset]
   (inc (rand-int offset)))
 
 (defn rand-node
   "Returns a new node at the given offset (which constrains the
    distance back of input links). ERCs are generated according to
-   *erc-probability* by calling *erc-generator*. Otherwise functions
-   are chosen from *funcmap*."
-  [offset]
-  (if (< (rand) *erc-probability*)
-    (let [v (*erc-generator*)]
+   erc-prob by calling erc-gen. Otherwise functions are chosen from
+   lang."
+  [offset lang {:as options
+                :keys [erc-prob erc-gen]
+                :or {erc-prob 0.0
+                     erc-gen #(rand 10.0)}}]
+  (if (< (rand) erc-prob)
+    (let [v (erc-gen)]
       {:fn nil :in [] :value v})
-    (let [[f n] (rand-nth (seq *funcmap*))]
-      {:fn f :in (vec (repeatedly n #(rand-link offset)))})))
+    (let [[x n] (rand-nth (seq lang))]
+      (if n
+        {:fn x :in (vec (repeatedly n #(rand-link offset)))}
+        {:fn nil :in [] :value x}))))
 
 (defn rand-genome
-  [inputs size n-out]
+  "Generates a new genome with `size` number of nodes, including input
+   nodes, and with `n-out` outputs chosen randomly. Options are passed
+   to `rand-node`."
+  [inputs size n-out lang options]
   (let [n-in (count inputs)
         in-nodes (repeat n-in {})
-        fn-nodes (map rand-node (range n-in size))]
+        fn-nodes (map #(rand-node % lang options) (range n-in size))]
     {:inputs (vec inputs)
      :nodes (vec (concat in-nodes fn-nodes))
-     :out-idx (vec (repeatedly n-out #(rand-nth (range n-in size))))}))
+     :out-idx (vec (repeatedly n-out #(rand-nth (range n-in size))))
+     :lang lang
+     :options options}))
 
 (defn active-idx
   "Returns the set of indices corresponding to active nodes, i.e.
@@ -75,7 +98,7 @@
   "Takes a vector of input values. Associates values with all active
   nodes by calling the respective functions, storing the result in
   :value. Returns the vector of nodes."
-  [{:keys [nodes out-idx inputs] :as gm} input-vals]
+  [{:as gm :keys [nodes out-idx inputs]} input-vals]
   (let [n-in (count inputs)
         active (sort (seq (active-idx gm)))
         in-nodes (map #(hash-map :value %) input-vals)
@@ -97,13 +120,13 @@
 
 (defn genome-outputs
   "Evaluates and returns the genome outputs using given input values."
-  [{:keys [nodes out-idx inputs] :as gm} input-vals]
+  [{:as gm :keys [nodes out-idx inputs]} input-vals]
   (let [nds (eval-genome gm input-vals)]
     (mapv #(get-in nds [% :value]) out-idx)))
 
 (defn print-active-nodes
   "Prints the graph of active nodes in DOT format."
-  [{:keys [nodes out-idx inputs] :as gm}]
+  [{:as gm :keys [nodes out-idx inputs]}]
   (let [n-in (count inputs)
         active (sort (seq (active-idx gm)))
         pr-node (fn [i nm]
@@ -147,7 +170,9 @@
     (br/browse-url (str "file://" tmpf))))
 
 (defn genome->expr
-  [{:keys [nodes out-idx inputs] :as gm}]
+  "Converts a genome into a quoted function expression.
+   This is like a macro, but at runtime."
+  [{:as gm :keys [nodes out-idx inputs]}]
   (let [size (count nodes)
         n-in (count inputs)
         active (sort (seq (active-idx gm)))
@@ -169,12 +194,15 @@
     `(fn ~args (let ~lets ~outs))))
 
 (defn genome->fn
+  "Converts a genome into a function, using `eval`. This is preferred
+   to `genome-outputs` as the function, once compiled, will be much
+   faster to evaluate."
   [gm]
   (eval (genome->expr gm)))
 
-(defn mutate-function-gene
-  [nd i]
-  (let [nnd (rand-node i)
+(defn- mutate-function-gene
+  [nd i lang options]
+  (let [nnd (rand-node i lang options)
         k (count (:in nd))
         nk (count (:in nnd))
         in (if (<= nk k)
@@ -185,20 +213,22 @@
     (assoc nnd :in in)))
 
 (defn mutate
-  "Mutates each gene and output index with probability
-   *gene-mut-rate*."
-  [{:keys [nodes out-idx inputs] :as gm}]
-  (let [n-in (count inputs)
+  "Mutates each gene (including function gene and input genes at each
+   node) and output index with probability :gene-mut-rate (an option
+   key), defaulting to 0.03. Other options are passed to `rand-node`."
+  [{:as gm :keys [nodes out-idx inputs lang options]}]
+  (let [gene-mut-rate (or (:gene-mut-rate options) 0.03)
+        n-in (count inputs)
         nds (loop [i n-in
                    nds nodes]
               (if (< i (count nodes))
-                (if (< (rand) *gene-mut-rate*)
+                (if (< (rand) gene-mut-rate)
                   ;; mutate function
-                  (let [nnd (mutate-function-gene (nth nds i) i)]
+                  (let [nnd (mutate-function-gene (nth nds i) i lang options)]
                     (recur (inc i) (assoc nds i nnd)))
                   ;; otherwise, possibly mutate input links
                   (let [in (get-in nds [i :in])
-                        m?s (repeatedly (count in) #(< (rand) *gene-mut-rate*))]
+                        m?s (repeatedly (count in) #(< (rand) gene-mut-rate))]
                     (if (some true? m?s)
                       (let [nin (mapv (fn [m? x] (if m? (rand-link i) x))
                                       m?s in)]
@@ -208,7 +238,7 @@
                 ;; done
                 nds))
         oi (mapv (fn [i]
-                   (if (< (rand) *gene-mut-rate*)
+                   (if (< (rand) gene-mut-rate)
                      (rand-nth (range n-in (count nodes))) ;; exclude inputs
                      i))
                  out-idx)]

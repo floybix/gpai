@@ -2,37 +2,37 @@
   (:use clojure.test)
   (:require [gpai.problems.parity :as parity]
             [gpai.lang.logic :as logic]
-            [gpai.lang.core :as lang]
+            [gpai.utils :refer [arity]]
             [gpai.cgp :as cgp]
             [gpai.evolution :as evo]))
 
 (defn n-parity-fitness
   [n]
   (let [fs `#{logic/_and_
-                logic/_or_
-                logic/_nand_
-                logic/_nor_}
-          fm (map (juxt identity lang/arity) fs)]
-      (binding [cgp/*funcmap* fm
-                cgp/*erc-probability* 0.0]
-        (let [inn (mapv #(str "i" %) (range n))
-              inputs (parity/gen-inputs n)
-              fitness (fn [gm]
-                        (let [f (comp boolean first (cgp/genome->fn gm))]
-                          (parity/fitness-fn inputs f)))
-              regen (evo/fullymixed-regeneration-fn cgp/mutate
-                                                    cgp/mutate
-                                                    :select-n 1
-                                                    :mutation-prob 1.0)
-              init-popn (repeatedly 5 #(cgp/rand-genome inn 100 1))
-              soln (time (evo/evolve init-popn
-                                     fitness
-                                     regen
-                                     {:target 1.0
-                                      :n-gens 3000
-                                      :progress-every 1000
-                                      :snapshot-secs nil}))]
-          (:fit-max (last (:history soln)))))))
+              logic/_or_
+              logic/_nand_
+              logic/_nor_}
+        lang (map (juxt identity arity) fs)
+        inm (mapv #(str "i" %) (range n))
+        opts {:erc-prob 0.0}
+        inputs (parity/gen-inputs n)
+        fitness (fn [gm]
+                  (let [f (comp boolean first (cgp/genome->fn gm))]
+                    (parity/fitness-fn inputs f)))
+        regen (evo/fullymixed-regeneration-fn
+               cgp/mutate
+               #(assert false)
+               :select-n 1
+               :mutation-prob 1.0)
+        init-popn (repeatedly 5 #(cgp/rand-genome inm 100 1 lang opts))
+        soln (time (evo/evolve init-popn
+                               fitness
+                               regen
+                               {:target 1.0
+                                :n-gens 3000
+                                :progress-every 1000
+                                :snapshot-secs nil}))]
+    (:fit-max (last (:history soln)))))
 
 (deftest even-3-parity-test
   (testing "Can evolve a solution using cgp. Even 3-parity."
