@@ -159,8 +159,8 @@
        (reduce max)))
 
 (defn print-codesizes
-  [popn i]
-  (let [szs (map (comp count flatten :expr) popn)
+  [i xs _]
+  (let [szs (map (comp count flatten :expr) xs)
         szo (sort szs)
         sz-max (last szo)
         sz-min (first szo)

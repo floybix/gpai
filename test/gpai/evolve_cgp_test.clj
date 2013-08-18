@@ -19,18 +19,16 @@
                     ;; take a positive number as classified "true"
                     (let [f (comp pos? first (cgp/genome->fn gm))]
                       (circle/fitness-fn train-inputs f)))
-          regen (evo/fullymixed-regeneration-fn
-                 cgp/mutate
-                 #(assert false)
-                 :select-n 1
-                 :mutation-prob 1.0)
+          regen (evo/regenerate-fn cgp/mutate
+                                   nil ;; no crossover
+                                   :select-n 1
+                                   :mutation-prob 1.0)
           init-popn (repeatedly 5 #(cgp/rand-genome inm 100 1 lang opts))
-          soln (time (evo/evolve init-popn
-                                 fitness
-                                 regen
-                                 {:n-gens 1000
-                                  :progress-every 100
-                                  :snapshot-secs nil}))]
+          soln (time (evo/simple-evolve init-popn
+                                        fitness
+                                        regen
+                                        {:n-gens 1000
+                                         :progress-every 100}))]
       (is (== 5 (count (:popn soln))) "Final population count")
       (is (vector? (:nodes (:best (last (:history soln))))) "Final solution accessible")
       (is (every? number? (map :fit-max (:history soln))) "Fitnesses are numbers")

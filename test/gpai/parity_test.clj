@@ -19,19 +19,17 @@
         fitness (fn [gm]
                   (let [f (comp boolean first (cgp/genome->fn gm))]
                     (parity/fitness-fn inputs f)))
-        regen (evo/fullymixed-regeneration-fn
-               cgp/mutate
-               #(assert false)
-               :select-n 1
-               :mutation-prob 1.0)
+        regen (evo/regenerate-fn cgp/mutate
+                                 nil ;; no crossover
+                                 :select-n 1
+                                 :mutation-prob 1.0)
         init-popn (repeatedly 5 #(cgp/rand-genome inm 100 1 lang opts))
-        soln (time (evo/evolve init-popn
-                               fitness
-                               regen
-                               {:target 1.0
-                                :n-gens 3000
-                                :progress-every 1000
-                                :snapshot-secs nil}))]
+        soln (time (evo/simple-evolve init-popn
+                                      fitness
+                                      regen
+                                      {:target 1.0
+                                       :n-gens 3000
+                                       :progress-every 1000}))]
     (:fit-max (last (:history soln)))))
 
 (deftest even-3-parity-test

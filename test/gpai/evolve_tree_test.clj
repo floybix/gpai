@@ -19,20 +19,18 @@
                     ;; take a positive number as classified "true"
                     (let [f (comp pos? (tree/genome->fn gm))]
                       (circle/fitness-fn train-inputs f)))
-          regen (evo/fullymixed-regeneration-fn
-                 tree/mutate-subtree
-                 tree/crossover-subtrees
-                 :select-n 1
-                 :mutation-prob 0.9)
+          regen (evo/regenerate-fn tree/mutate-subtree
+                                   tree/crossover-subtrees
+                                   :select-n 1
+                                   :mutation-prob 0.9)
           init-popn (repeatedly 5 #(tree/rand-genome ins lang opts))
-          soln (time (evo/evolve init-popn
-                                 fitness
-                                 regen
-                                 {:n-gens 1000
-                                  :progress (juxt evo/print-progress
-                                                  tree/print-codesizes)
-                                  :progress-every 100
-                                  :snapshot-secs nil}))]
+          soln (time (evo/simple-evolve init-popn
+                                        fitness
+                                        regen
+                                        {:n-gens 1000
+                                         :progress! (juxt evo/print-progress
+                                                          tree/print-codesizes)
+                                         :progress-every 100}))]
       (is (== 1000 (count (:history soln))) "Generation count")
       (is (== 5 (count (:popn soln))) "Final population count")
       (is (sequential? (:expr (:best (last (:history soln)))))
