@@ -1,4 +1,4 @@
-(ns gpai.tree
+(ns io.evolvability.gpai.tree
   "Tree-structured programs.
    i.e. classical GP.
 
@@ -14,7 +14,7 @@
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector, with functions given as
    [fn-symbol arity], and constants as [value nil] or just [value].
-   Function arities can be looked up with `gpai.utils/arity` which also
+   Function arities can be looked up with `utils/arity` which also
    returns nil for non-symbols.
 
    The `:options` map can hold parameters passed on to generation and
@@ -27,7 +27,7 @@
      generating a terminal (default 0.0).
    * :erc-gen (default #(rand 10.0)) a function of no arguments to
      generate an ERC."
-  (:require [gpai.utils :as utils]
+  (:require [io.evolvability.gpai.utils :as utils]
             [clojure.zip :as zip]))
 
 (defn gen-terminal

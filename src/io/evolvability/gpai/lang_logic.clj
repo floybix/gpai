@@ -1,4 +1,4 @@
-(ns gpai.lang.logic)
+(ns io.evolvability.gpai.lang-logic)
 
 (defn _and_
   [x y]

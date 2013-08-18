@@ -1,10 +1,10 @@
-(ns gpai.parity-test
+(ns io.evolvability.gpai.parity-test
   (:use clojure.test)
-  (:require [gpai.problems.parity :as parity]
-            [gpai.lang.logic :as logic]
-            [gpai.utils :refer [arity]]
-            [gpai.cgp :as cgp]
-            [gpai.evolution :as evo]))
+  (:require (io.evolvability.gpai [lang-logic :as logic]
+                                  [utils :refer [arity]]
+                                  [cgp :as cgp]
+                                  [evolution :as evo])
+            [io.evolvability.gpai.problems.parity :as parity]))
 
 (defn n-parity-fitness
   [n]

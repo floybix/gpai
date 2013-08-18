@@ -1,5 +1,5 @@
-(ns gpai.evolution.co
-  (:require [gpai.evolution :as evo]))
+(ns io.evolvability.gpai.coevolution
+  (:require [io.evolvability.gpai.evolution :as evo]))
 
 (defn stratified-basic-distil
   [xs]

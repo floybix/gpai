@@ -1,4 +1,4 @@
-(ns gpai.problems.circle)
+(ns io.evolvability.gpai.problems.circle)
 
 (def inputs '[r y x])
 

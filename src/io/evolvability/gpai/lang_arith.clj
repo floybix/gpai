@@ -1,4 +1,4 @@
-(ns gpai.lang.arith)
+(ns io.evolvability.gpai.lang-arith)
 
 (defn _abs_
   [x]

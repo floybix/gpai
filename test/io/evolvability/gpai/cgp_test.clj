@@ -1,8 +1,8 @@
-(ns gpai.cgp-test
+(ns io.evolvability.gpai.cgp-test
   (:use clojure.test)
-  (:require [gpai.cgp :refer :all]
-            [gpai.lang.arith :as arith]
-            [gpai.utils :refer [arity]]))
+  (:require (io.evolvability.gpai [cgp :refer :all]
+                                  [lang-arith :as arith]
+                                  [utils :refer [arity]])))
 
 (deftest graph-test
   (let [fs arith/funcset-real
@@ -37,19 +37,19 @@
     :nodes [{}
             {}
             {}
-            {:fn gpai.lang.arith/_min_, :in [2 1]}
+            {:fn io.evolvability.gpai.lang-arith/_min_, :in [2 1]}
             {:fn nil, :in [], :value 6.38965609827303}
-            {:fn gpai.lang.arith/_mod_, :in [1 3]}
+            {:fn io.evolvability.gpai.lang-arith/_mod_, :in [1 3]}
             {:fn nil, :in [], :value 5.79469347837637}
-            {:fn gpai.lang.arith/_-_, :in [6 7]}
-            {:fn gpai.lang.arith/_mod_, :in [5 3]}
+            {:fn io.evolvability.gpai.lang-arith/_-_, :in [6 7]}
+            {:fn io.evolvability.gpai.lang-arith/_mod_, :in [5 3]}
             {:fn nil, :in [], :value 5.035921772704431}
-            {:fn gpai.lang.arith/_-_, :in [8 8]}
-            {:fn gpai.lang.arith/_-_, :in [8 6]}
-            {:fn gpai.lang.arith/_-_, :in [5 6]}
-            {:fn gpai.lang.arith/_div_, :in [11 9]}
-            {:fn gpai.lang.arith/_-_, :in [4 4]}
-            {:fn gpai.lang.arith/_+_, :in [9 2]}],
+            {:fn io.evolvability.gpai.lang-arith/_-_, :in [8 8]}
+            {:fn io.evolvability.gpai.lang-arith/_-_, :in [8 6]}
+            {:fn io.evolvability.gpai.lang-arith/_-_, :in [5 6]}
+            {:fn io.evolvability.gpai.lang-arith/_div_, :in [11 9]}
+            {:fn io.evolvability.gpai.lang-arith/_-_, :in [4 4]}
+            {:fn io.evolvability.gpai.lang-arith/_+_, :in [9 2]}],
     :out-idx [14 15]})
 
 (def gm1-expr
@@ -58,10 +58,10 @@
      (clojure.core/let
          [nd-4_ 6.38965609827303
           nd-6_ 5.79469347837637
-          nd-10_ (gpai.lang.arith/_-_ nd-2_ nd-2_)
-          nd-13_ (gpai.lang.arith/_div_ nd-2_ nd-4_)
-          nd-14_ (gpai.lang.arith/_-_ nd-10_ nd-10_)
-          nd-15_ (gpai.lang.arith/_+_ nd-6_ nd-13_)]
+          nd-10_ (io.evolvability.gpai.lang-arith/_-_ nd-2_ nd-2_)
+          nd-13_ (io.evolvability.gpai.lang-arith/_div_ nd-2_ nd-4_)
+          nd-14_ (io.evolvability.gpai.lang-arith/_-_ nd-10_ nd-10_)
+          nd-15_ (io.evolvability.gpai.lang-arith/_+_ nd-6_ nd-13_)]
        [nd-14_ nd-15_])))
 
 (deftest compiler-test

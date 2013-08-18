@@ -1,4 +1,4 @@
-(ns gpai.cgp
+(ns io.evolvability.gpai.cgp
   "General graph-structured programs.
    i.e. Cartesian Genetic Programming with 1 row and no n-back limit.
    
@@ -13,8 +13,8 @@
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector, with functions given as
    [fn-symbol arity], and constants as [value nil] or just [value].
-   Function arities can be looked up with `gpai.utils/arity` which
-   also returns nil for non-symbols.
+   Function arities can be looked up with `utils/arity` which also
+   returns nil for non-symbols.
 
    Each node is a map like
    `{:fn 'foo, :in [1 4 1 ...]}`

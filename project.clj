@@ -1,4 +1,4 @@
-(defproject gpai "0.1.0-SNAPSHOT"
+(defproject io.evolvability/gpai "0.1.0-SNAPSHOT"
   :description "Genetic Programming for Artificial Intelligence"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"

@@ -1,8 +1,8 @@
-(ns gpai.tree-test
+(ns io.evolvability.gpai.tree-test
   (:use clojure.test)
-  (:require [gpai.tree :refer :all]
-            [gpai.lang.arith :as arith]
-            [gpai.utils :refer [arity]]))
+  (:require (io.evolvability.gpai [tree :refer :all]
+                                  [lang-arith :as arith]
+                                  [utils :refer [arity]])))
 
 (deftest expressions-test
   (let [fs (conj arith/funcset-real 0)

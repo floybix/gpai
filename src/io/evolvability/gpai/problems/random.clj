@@ -1,4 +1,4 @@
-(ns gpai.problems.random
+(ns io.evolvability.gpai.problems.random
   "A zero-sum game of mimicry vs discrimination - for co-evolution.
 
    The Generator population are to generate a sequence of integer

@@ -1,5 +1,5 @@
-(ns gpai.evolution
-  (:require [gpai.utils :as utils]))
+(ns io.evolvability.gpai.evolution
+  (:require [io.evolvability.gpai.utils :as utils]))
 
 (defn regenerate-fn
   "Returns a regenerate function taking a fitness-evaluated population
@@ -58,8 +58,8 @@
 
    This function works with collections of individuals. Individuals
    must support metadata (all Clojure types do), since fitness values
-   are stored in metadata with key ::fitness. This is approprate since
-   metadata retains equality comparisons between individuals.
+   are stored in metadata (with key ::fitness). This is approprate
+   since metadata retains equality comparisons between individuals.
 
    Having the fitness evaluation function apply to the whole
    population, and depend on the previous generation and evolution

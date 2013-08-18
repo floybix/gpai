@@ -1,6 +1,6 @@
-(ns gpai.lang-arith-test
+(ns io.evolvability.gpai.lang-arith-test
   (:use clojure.test
-        gpai.lang.arith))
+        io.evolvability.gpai.lang-arith))
 
 (deftest lang-arith-test
   (testing "Arithmetic functions."

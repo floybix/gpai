@@ -1,4 +1,4 @@
-(ns gpai.problems.parity)
+(ns io.evolvability.gpai.problems.parity)
 
 (defn actual-fn
   [& args]
