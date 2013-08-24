@@ -48,9 +48,9 @@
   ([funcs terminals options]
      (gen-expr funcs terminals 0 options))
   ([funcs terminals from-depth {:as options
-                                  :keys [terminal-prob max-expr-depth]
-                                  :or {terminal-prob 0.5
-                                       max-expr-depth 8}}]
+                                :keys [terminal-prob max-expr-depth]
+                                :or {terminal-prob 0.5
+                                     max-expr-depth 8}}]
      (if (and (> from-depth 0) ;; terminals not allowed at root
               (or (>= from-depth max-expr-depth) ;; limit depth
                   (< (rand) terminal-prob)))

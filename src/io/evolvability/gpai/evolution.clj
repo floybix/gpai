@@ -1,6 +1,20 @@
 (ns io.evolvability.gpai.evolution
   (:require [io.evolvability.gpai.utils :as utils]))
 
+(defn get-fitness
+  "Returns the previously calculated fitness value stored in metadata
+   key :io.evolvability.gpai.evolution/fitness, or nil."
+  [x]
+  (::fitness (meta x)))
+
+(defn get-fitness-0
+  [x]
+  (or (get-fitness x) 0))
+
+(defn tag-fitness
+  [x fitness-val]
+  (vary-meta x assoc ::fitness fitness-val))
+
 (defn regenerate-fn
   "Returns a regenerate function taking a fitness-evaluated population
    and deriving the next generation population. This involves both
@@ -18,7 +32,7 @@
   (fn [xs]
     (let [n (count xs)
           n-mutate (long (* (- n elitism) mutation-prob))
-          sortd (reverse (sort-by (comp ::fitness meta) xs))
+          sortd (reverse (sort-by get-fitness xs))
           parents (take select-n sortd)
           new-mutant #(mutate (rand-nth parents))
           new-child #(crossover (rand-nth parents)
@@ -32,8 +46,8 @@
    with the generation champion in key :best, as well as fitness
    statistics in keys :fit-max :fit-min :fit-med."
   [xs]
-  (let [sortd (sort-by (comp ::fitness meta) xs)
-        fso (map (comp ::fitness meta) sortd)
+  (let [sortd (sort-by get-fitness-0 xs)
+        fso (map get-fitness-0 sortd)
         fit-max (last fso)
         fit-min (first fso)
         fit-med (utils/median fso)
@@ -45,7 +59,7 @@
 
 (defn print-progress
   [i xs _]
-  (let [fs (map (comp ::fitness meta) xs)
+  (let [fs (map get-fitness-0 xs)
         fso (sort fs)
         fit-max (last fso)
         fit-min (first fso)
@@ -79,10 +93,9 @@
      fitness-evaluated population will be passed on to the following
      two functions.
    * regenerate function takes the fitness-evaluated population
-     collection, where fitness values for each individual are in
-     metadata key ::fitness. It returns a new population with new
-     individuals that are typically derived by mutation or crossover.
-     The new population need not be the same size.
+     collection. It returns a new population with new individuals that
+     are typically derived by mutation or crossover. The new
+     population need not be the same size.
 
    Options map keys:
    * The evolution returns after `:n-gens` generations (default 100)
@@ -112,8 +125,7 @@
    * :history the history vector;
    * :n-gens number of generations run."
   [init-popn eval-popn-fitness regenerate
-   {:as options
-    :keys [n-gens target distil progress! progress-every prev-popn]
+   {:keys [n-gens target distil progress! progress-every prev-popn]
     :or {n-gens 100
          target Double/POSITIVE_INFINITY
          distil #'basic-distil
@@ -126,9 +138,8 @@
          i 1]
     (let [evald-popn (eval-popn-fitness popn prev-popn history)
           newhistory (conj history (distil evald-popn))
-          maxfit (->> (map (comp ::fitness meta) evald-popn)
-                      (filter number?)
-                      (reduce max))]
+          maxfit (->> (map get-fitness-0 evald-popn)
+                      (apply max))]
       (when (or (== i 1)
                 (== i n-gens)
                 (>= maxfit target)
@@ -157,6 +168,6 @@
    {:as options
     :keys [map-fn]
     :or {map-fn #'map}}]
-  (let [eval-fitness (fn [x] (vary-meta x assoc ::fitness (fitness x)))
+  (let [eval-fitness (fn [x] (tag-fitness x (fitness x)))
         map-fitness (fn [xs _ _] (map-fn eval-fitness xs))]
     (evolve-discrete init-popn map-fitness regenerate options)))

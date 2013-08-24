@@ -137,7 +137,8 @@
                                       i (str nm))))
         pr-link (fn [i1 i2 j]
                   (println (format "nd%d -> nd%d [label=%d];"
-                                   i1 i2 j)))]
+                                   i1 i2 j)))
+        prettyval (fn [x] (if (float? x) (format "%.2f" x) (str x)))]
     (println "digraph activenodes {")
     (println "ordering=out;")
     (dorun (map-indexed pr-in-node inputs))
@@ -146,7 +147,7 @@
       (let [nd (nth nodes i)
             in-idx (map (partial - i) (:in nd))
             nm (if (:fn nd) (name (:fn nd))
-                   (format "%.2f" (:value nd)))]
+                   (prettyval (:value nd)))]
         (pr-node i nm)
         (dorun (map pr-link in-idx (repeat i)
                     (range (count in-idx))))))
@@ -161,13 +162,14 @@
 (defn viz-active-nodes
   "Generates an SVG graphic of the active nodes graph and opens it.
    Executes the `dot` program, part of Graphviz."
-  [gm]
+  [gm & {:keys [name svg-file] :or {name "gpai-active-nodes"}}]
   (let [s (with-out-str (print-active-nodes gm))
-        tmpf "/tmp/gpai.active-nodes.svg"
-        tmpdot (str tmpf ".dot")]
-    (spit tmpdot s)
-    (sh/sh "dot" "-Tsvg" "-o" tmpf tmpdot)
-    (br/browse-url (str "file://" tmpf))))
+        svg-file (or svg-file (format "/tmp/%s.svg" name))
+        dot-file (str svg-file ".dot")]
+    (spit dot-file s)
+    (sh/sh "dot" "-Tsvg" "-o" svg-file dot-file)
+    (println "wrote" svg-file)
+    (br/browse-url (str "file://" svg-file))))
 
 (defn genome->expr
   "Converts a genome into a quoted function expression.

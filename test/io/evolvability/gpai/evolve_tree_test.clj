@@ -1,6 +1,6 @@
 (ns io.evolvability.gpai.evolve-tree-test
   (:use clojure.test)
-  (:require (io.evolvability.gpai [lang-arith :as arith]
+  (:require (io.evolvability.gpai [lang-float :as langf]
                                   [utils :refer [arity]]
                                   [tree :as tree]
                                   [evolution :as evo])
@@ -9,7 +9,7 @@
 (deftest evolution-test
   (testing "Can evolve a solution using tree gp. Classify points as in
    or out of a circle of given radius."
-    (let [fs (conj arith/funcset-real 0)
+    (let [fs (conj langf/funcset 0.0)
           lang (map (juxt identity arity) fs)
           ins circle/inputs
           opts {:erc-prob 0.25
