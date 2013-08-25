@@ -32,7 +32,8 @@
   (fn [xs]
     (let [n (count xs)
           n-mutate (long (* (- n elitism) mutation-prob))
-          sortd (reverse (sort-by get-fitness xs))
+          ;; shuffle to avoid deterministic elitism with equal fitness
+          sortd (sort-by (comp - get-fitness) (shuffle xs))
           parents (take select-n sortd)
           new-mutant #(mutate (rand-nth parents))
           new-child #(crossover (rand-nth parents)
@@ -48,24 +49,23 @@
   [xs]
   (let [sortd (sort-by get-fitness-0 xs)
         fso (map get-fitness-0 sortd)
-        fit-max (last fso)
-        fit-min (first fso)
+        fit-hi (last fso)
+        fit-lo (first fso)
         fit-med (utils/median fso)
         best (last sortd)]
-    {:fit-max fit-max
-     :fit-min fit-min
+    {:fit-max fit-hi
+     :fit-min fit-lo
      :fit-med fit-med
      :best best}))
 
 (defn print-progress
   [i xs _]
-  (let [fs (map get-fitness-0 xs)
-        fso (sort fs)
-        fit-max (last fso)
-        fit-min (first fso)
+  (let [fso (sort (map get-fitness-0 xs))
+        fit-hi (last fso)
+        fit-lo (first fso)
         fit-med (utils/median fso)]
     (println (format "Gen %d: fitnesses [ %+8.3f  %+8.3f  %+8.3f ]"
-                     i (double fit-min) (double fit-med) (double fit-max)))))
+                     i (double fit-lo) (double fit-med) (double fit-hi)))))
 
 (defn evolve-discrete
   "General evolution function with discrete generations.

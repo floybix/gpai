@@ -27,6 +27,38 @@
   [x]
   (nth x (quot (dec (count x)) 2)))
 
+(defn sign
+  [x]
+  (if (zero? x) 0
+      (if (pos? x) 1 -1)))
+
+(defn ts-peaks
+  "Takes a numeric time series and returns a sequence corresponding to
+   local peaks. Each item is a map like
+   `{:start i, :end i+d, :duration d, :value v}`."
+  [xs]
+  ;; calculate forward differences.
+  ;; tail is marked as decrease: this allows us to include a final peak.
+  (let [diffs (concat (map - (next xs) xs) [-1])
+        i-diff-xs (map vector (range (count xs)) diffs xs)
+        slopes (partition-by (comp sign second) i-diff-xs)
+        peaks (map (fn [[p c n]]
+                     (let [[_ pd _] (first p)
+                           [i cd cv] (first c)
+                           [ni nd _] (first n)]
+                       (when (and (pos? pd)
+                                  (or (neg? cd)
+                                      (and (zero? cd)
+                                           (neg? nd))))
+                         ;; peak
+                         (let [end (if (neg? cd) i ni)]
+                           {:start i
+                            :end end
+                            :duration (inc (- end i))
+                            :value cv}))))
+                   (partition 3 1 slopes))]
+    (remove nil? peaks)))
+
 (defn snapshot-to-file-fn
   "Returns a function usable as `:progress!` in `evolution`, taking 3
    args. After an elapsed time of `every-mins` minutes it writes a

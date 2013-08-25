@@ -1,15 +1,22 @@
 (ns io.evolvability.gpai.coevolution
-  (:require [io.evolvability.gpai.evolution :as evo]))
+  (:require (io.evolvability.gpai [evolution :as evo]
+                                  [utils :as utils])))
+
+(defn get-popn
+  "Returns the sub-population identifier stored in metadata
+   key :io.evolvability.gpai.coevolution/popn, or nil."
+  [x]
+  (::popn (meta x)))
 
 (defn stratified-basic-distil
   [xs]
-  (let [strata (group-by (comp ::popn meta) xs)]
+  (let [strata (group-by get-popn xs)]
     (zipmap (keys strata)
             (map evo/basic-distil (vals strata)))))
 
 (defn stratified-print-progress
   [i xs h]
-  (let [strata (group-by (comp ::popn meta) xs)]
+  (let [strata (group-by get-popn xs)]
     (doseq [[id sxs] (sort strata)]
       (print (str id " "))
       (evo/print-progress i sxs h))))
@@ -103,52 +110,6 @@
     (let [sortd (sort-by evo/get-fitness xs)]
       (take-last n sortd))))
 
-(defn sign
-  [x]
-  (if (zero? x) 0
-      (if (pos? x) 1 -1)))
-
-(defn fill-in-slopes
-  "Take a partitioned sequence like
-   ((-1 -1) (0 0) (-1) (0) (1) (0) (1 1))
-   and fill in groups of 0s which are surrounded by values of same
-   sign. So the example above yeilds
-   ((-1 -1 -1 -1 -1) (0) (1 1 1 1))."
-  [parts]
-  (let [innerfilled (map (fn [[p c n]]
-                           (if (and (zero? (first c))
-                                    (== (sign (first p))
-                                        (sign (first n))))
-                             (repeat (count c) (first n))
-                             c))
-                         (partition 3 1 parts))
-        filled (concat (take 1 parts)
-                       innerfilled
-                       (take-last 1 parts))]
-    (partition-by sign (apply concat filled))))
-
-(defn ts-peaks
-  "Takes a numeric time series and returns a sequence corresponding to
-   local peaks. Each item is a map like
-   `{:start i, :end i+d, :duration d, :value v}`."
-  [xs]
-  (let [diffs (cons 0 (map - (next xs) xs))
-        i-diff-xs (map vector (range (count xs)) diffs xs)
-        slopes (partition-by (comp sign second) i-diff-xs)
-        peaks (map (fn [[p c n]]
-                     (let [[_ pd _] (first p)
-                           [i _ cv] (first c)
-                           [ni nd _] (first n)]
-                       (when (and (pos? pd)
-                                  (neg? nd)) ;; peak
-                         {:start i
-                          :end (dec ni)
-                          :duration (- ni i)
-                          :value cv})))
-                   (partition 3 1 slopes))]
-    (remove nil? peaks)))
-
-
 (defn history-peaks-parasites-fn
   "Returns a parasites selection function that gives the top n
    individuals by fitness and up to m chosen from the history of
@@ -163,8 +124,10 @@
   (fn [xs h popid]
     (let [champs (mapv #(get-in % [popid :best]) h)
           chfit (map evo/get-fitness champs)
-          fitpeaks (sort-by :value (ts-peaks chfit))
+          fitpeaks (utils/ts-peaks chfit)
           selpeaks (->> fitpeaks
+                        shuffle
+                        (sort-by (comp - :value))
                         (take (* 2 m))
                         (shuffle)
                         (take m))
