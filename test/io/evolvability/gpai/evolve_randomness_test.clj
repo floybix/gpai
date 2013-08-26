@@ -4,6 +4,7 @@
   (:require (io.evolvability.gpai [lang-integer :as langi]
                                   [utils :as utils :refer [arity]]
                                   [cgp :as cgp]
+                                  [cgp-viz :as cgp-viz]
                                   [evolution :as evo]
                                   [coevolution :as coevo])
             [io.evolvability.gpai.problems.randomness :as rness]))
@@ -31,9 +32,9 @@
                                         (repeat (- i-hi i-lo) me)
                                         (repeat \space)))
             my-line (assoc (vec my-line) i-0 "0")]
-        (println prefix
-                 (apply str my-line)
-                 postfix)))))
+        (println (str prefix
+                      (apply str my-line)
+                      postfix))))))
 
 (deftest evolve-randomness-test
   (testing "Can coevolve using cgp."
@@ -46,8 +47,8 @@
           opts {:erc-prob 0.25
                 :erc-gen #(rand-int 16)}
           fitness (fn [gen disc]
-                    (let [gen-f (cgp/genome->fn gen)
-                          disc-f (cgp/genome->fn disc)]
+                    (let [gen-f (cgp/function gen)
+                          disc-f (cgp/function disc)]
                       (rness/duel 16 16 gen-f disc-f disc-n)))
           regen (evo/regenerate-fn cgp/mutate
                                    nil ;; no crossover
@@ -84,15 +85,15 @@
         (println)
         (println "generator seqs in each peak (seed 3):")
         (doseq [gen gsel
-                :let [gen-f (cgp/genome->fn gen)]]
+                :let [gen-f (cgp/function gen)]]
           (println (rness/gen-seq gen-f 16 3)))
         (println))
       ;; print out final results
       (let [final (last (:history soln))
             gen (:best (:a final))
             disc (:best (:b final))
-            gen-f (cgp/genome->fn gen)
-            disc-f (cgp/genome->fn disc)
+            gen-f (cgp/function gen)
+            disc-f (cgp/function disc)
             run-disc (partial rness/nonrandomness-score disc-f disc-n)]
         (println "FINAL RESULTS")
         (println)
@@ -125,8 +126,8 @@
           (println r2)
           (println r3))
         (println "genome of generator.")
-        (cgp/viz-active-nodes gen :name "generator")
+        (cgp-viz/viz-active-nodes gen :name "generator")
         (println "...")
         (println "genome of discriminator.")
-        (cgp/viz-active-nodes disc :name "discriminator")
+        (cgp-viz/viz-active-nodes disc :name "discriminator")
         ))))

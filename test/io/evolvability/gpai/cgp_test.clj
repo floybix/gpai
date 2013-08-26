@@ -1,6 +1,7 @@
 (ns io.evolvability.gpai.cgp-test
   (:use clojure.test)
   (:require (io.evolvability.gpai [cgp :refer :all]
+                                  [cgp-viz :as cgp-viz]
                                   [lang-float :as langf]
                                   [utils :refer [arity]])))
 
@@ -16,7 +17,7 @@
     (testing "Calculation of active nodes"
       (let [gm (rand-genome inm 16 2 lang {})]
         (is (every? number? (active-idx gm)) "Active list contains numbers")
-        (is (re-seq #" -> " (with-out-str (print-active-nodes gm)))
+        (is (re-seq #" -> " (with-out-str (cgp-viz/print-active-nodes gm)))
             "Print active nodes in directed dot format")))
     (testing "Modify genomes"
       (let [gm (rand-genome inm 16 2 lang {})]
@@ -26,11 +27,10 @@
   (let [fs langf/funcset
         lang (map (juxt identity arity) fs)
         inm ["a" "b" "c"]]
-    (testing "Eval generated expressions as a function"
+    (testing "Evalulate generated expressions by walking nodes"
       (let [gm (rand-genome inm 16 2 lang {})]
-        (is (every? number?
-                    (let [f (fn [& args] (genome-outputs gm args))]
-                      (f 1 2 3))) "Evaluates to numbers")))))
+        (is (every? number? (genome-outputs gm [1 2 3]))
+            "Evaluates to numbers")))))
 
 (def gm1
   '{:inputs ["a" "b" "c"],
@@ -70,4 +70,5 @@
         inm ["a" "b" "c"]]
     (let [gm (rand-genome inm 16 2 lang {})]
       (is (= gm1-expr (genome->expr gm1))
-          "Compiled genome expression matches static example"))))
+          "Compiled genome expression matches static example")
+      (is (== 6.264202314823895 (second (let [f (function gm1)] (f 1 2 3))))))))

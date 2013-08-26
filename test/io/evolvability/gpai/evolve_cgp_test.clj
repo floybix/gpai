@@ -17,7 +17,7 @@
           train-inputs (circle/gen-inputs [1 2.5 3.5] 4)
           fitness (fn [gm]
                     ;; take a positive number as classified "true"
-                    (let [f (comp pos? first (cgp/genome->fn gm))]
+                    (let [f (comp pos? first (cgp/function gm))]
                       (circle/fitness-fn train-inputs f)))
           regen (evo/regenerate-fn cgp/mutate
                                    nil ;; no crossover
@@ -35,5 +35,5 @@
       (is (> (:fit-max (last (:history soln))) 0.8) "Reasonable solution")
       ;; print out grid of hits/misses
       (let [gm (:best (last (:history soln)))
-            f (comp pos? first (cgp/genome->fn gm))]
+            f (comp pos? first (cgp/function gm))]
         (circle/print-solution train-inputs f)))))

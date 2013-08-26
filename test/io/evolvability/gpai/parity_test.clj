@@ -17,7 +17,7 @@
         opts {:erc-prob 0.0}
         inputs (parity/gen-inputs n)
         fitness (fn [gm]
-                  (let [f (comp boolean first (cgp/genome->fn gm))]
+                  (let [f (comp boolean first (cgp/function gm))]
                     (parity/fitness-fn inputs f)))
         regen (evo/regenerate-fn cgp/mutate
                                  nil ;; no crossover

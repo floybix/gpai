@@ -37,9 +37,28 @@
      Constant (ERC) as opposed to an input symbol given that we are
      generating a terminal (default 0.0).
    * :erc-gen (default #(rand 10.0)) a function of no arguments to
-     generate an ERC."
-  (:require [clojure.java.shell :as sh]
-            [clojure.java.browse :as br]))
+     generate an ERC.
+
+   For performance, a genotype is compiled to a function, which can be
+   accessed with `function` in this namespace. The option
+   `:precompile?` (default true) determines whether the function is
+   compiled immediately on construction of the genome and cached in
+   metadata. Any alterations to the genome outside of the functions
+   provided in this namespace should clear/refresh the cache with
+   `recache`. It can check whether the active part of the genome has
+   in fact changed, since mutations often do not affect the active
+   nodes.")
+
+(declare recache)
+
+(defn genome
+  [inputs nodes out-idx lang options]
+  (let [gm {:inputs (vec inputs)
+            :nodes (vec nodes)
+            :out-idx (vec out-idx)
+            :lang lang
+            :options options}]
+    (recache gm)))
 
 (defn- rand-link
   [offset]
@@ -69,12 +88,9 @@
   [inputs size n-out lang options]
   (let [n-in (count inputs)
         in-nodes (repeat n-in {})
-        fn-nodes (map #(rand-node % lang options) (range n-in size))]
-    {:inputs (vec inputs)
-     :nodes (vec (concat in-nodes fn-nodes))
-     :out-idx (vec (repeatedly n-out #(rand-nth (range n-in size))))
-     :lang lang
-     :options options}))
+        fn-nodes (map #(rand-node % lang options) (range n-in size))
+        out-idx (repeatedly n-out #(rand-nth (range n-in size)))]
+    (genome inputs (concat in-nodes fn-nodes) out-idx lang options)))
 
 (defn active-idx
   "Returns the set of indices corresponding to active nodes, i.e.
@@ -124,53 +140,6 @@
   (let [nds (eval-genome gm input-vals)]
     (mapv #(get-in nds [% :value]) out-idx)))
 
-(defn print-active-nodes
-  "Prints the graph of active nodes in DOT format."
-  [{:as gm :keys [nodes out-idx inputs]}]
-  (let [n-in (count inputs)
-        active (sort (seq (active-idx gm)))
-        pr-node (fn [i nm]
-                  (println (format "nd%d [label=\"%s\"];"
-                                   i (str nm))))
-        pr-in-node (fn [i nm]
-                     (println (format "nd%d [label=\"%s\",shape=box];"
-                                      i (str nm))))
-        pr-link (fn [i1 i2 j]
-                  (println (format "nd%d -> nd%d [label=%d];"
-                                   i1 i2 j)))
-        prettyval (fn [x] (if (float? x) (format "%.2f" x) (str x)))]
-    (println "digraph activenodes {")
-    (println "ordering=out;")
-    (dorun (map-indexed pr-in-node inputs))
-    (doseq [i active
-            :when (>= i n-in)]
-      (let [nd (nth nodes i)
-            in-idx (map (partial - i) (:in nd))
-            nm (if (:fn nd) (name (:fn nd))
-                   (prettyval (:value nd)))]
-        (pr-node i nm)
-        (dorun (map pr-link in-idx (repeat i)
-                    (range (count in-idx))))))
-    ;(println "out [label=\"output(s)\",shape=plaintext];")
-    (println "node [shape=plaintext];")
-    (dorun (map-indexed (fn [j i]
-                          (-> (format "nd%d -> out%d [style=dashed];" i j)
-                              println))
-                        out-idx))
-    (println "}")))
-
-(defn viz-active-nodes
-  "Generates an SVG graphic of the active nodes graph and opens it.
-   Executes the `dot` program, part of Graphviz."
-  [gm & {:keys [name svg-file] :or {name "gpai-active-nodes"}}]
-  (let [s (with-out-str (print-active-nodes gm))
-        svg-file (or svg-file (format "/tmp/%s.svg" name))
-        dot-file (str svg-file ".dot")]
-    (spit dot-file s)
-    (sh/sh "dot" "-Tsvg" "-o" svg-file dot-file)
-    (println "wrote" svg-file)
-    (br/browse-url (str "file://" svg-file))))
-
 (defn genome->expr
   "Converts a genome into a quoted function expression.
    This is like a macro, but at runtime."
@@ -195,12 +164,33 @@
         outs (mapv (partial nth syms) out-idx)]
     `(fn ~args (let ~lets ~outs))))
 
-(defn genome->fn
-  "Converts a genome into a function, using `eval`. This is preferred
-   to `genome-outputs` as the function, once compiled, will be much
-   faster to evaluate."
+(defn function
+  "Returns a function corresponding to the genome, possibly cached.
+   This is preferred to `genome-outputs` as the function, once
+   compiled, will be much faster to evaluate."
   [gm]
-  (eval (genome->expr gm)))
+  (if-let [f (::function (meta gm))]
+    f
+    (eval (genome->expr gm))))
+
+(defn recache
+  "Clears any cached compiled function and, if option :precompile? is
+   not false, compiles a new one. If option :recache-test? is not
+   false, the genome's evaluation expression (using active nodes) is
+   compared to the cached one to see whether recompilation is
+   necessary."
+  [{:as gm :keys [nodes out-idx inputs lang options]}]
+  (if (:precompile? options true)
+    (let [expr (genome->expr gm)]
+      (if (and (:recache-test? options true)
+               (= expr (::expr (meta gm))))
+        gm
+        ;; else - expression changed, recompile
+        (vary-meta gm assoc
+                   ::function (eval expr)
+                   ::expr expr)))
+    ;; else
+    (vary-meta gm dissoc ::function ::expr)))
 
 (defn- mutate-function-gene
   [nd i lang options]
@@ -244,4 +234,5 @@
                      (rand-nth (range n-in (count nodes))) ;; exclude inputs
                      i))
                  out-idx)]
-    (assoc gm :nodes nds :out-idx oi)))
+    (-> (assoc gm :nodes nds :out-idx oi)
+        recache)))

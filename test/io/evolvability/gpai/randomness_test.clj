@@ -24,11 +24,11 @@
                                     0))
                          ;; add accumulated scores as non-randomness score
                          out (+ n2 n4)]
-                     [n1 n2 n3 n4 0 0 out]))]
+                     [out n1 n2 n3 n4 0 0]))]
       (is (= 32 (count (rness/gen-seq gen-f 32 1))))
       (is (= (vec (rness/gen-seq gen-f 5 0))
              [0 2 4 6 8]))
-      (is (= (rness/nonrandomness-score disc-f (rness/gen-seq gen-f 5 0))
+      (is (= (rness/nonrandomness-score disc-f 7 (rness/gen-seq gen-f 5 0))
              9))
-      (is (= (rness/duel 32 32 gen-f disc-f)
-             [-32 32])))))
+      (is (= (rness/duel 16 16 gen-f disc-f 7)
+             [-16 16])))))
