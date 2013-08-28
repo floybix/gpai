@@ -40,13 +40,15 @@
     (println "}")))
 
 (defn viz-active-nodes
-  "Generates an SVG graphic of the active nodes graph and opens it.
-   Executes the `dot` program, part of Graphviz."
-  [gm & {:keys [name svg-file] :or {name "gpai-active-nodes"}}]
+  "Generates an SVG graphic of the active nodes graph and optionally
+   opens it. Executes the `dot` program, part of Graphviz."
+  [gm & {:keys [name svg-file open?]
+         :or {name "gpai-active-nodes", open? true}}]
   (let [s (with-out-str (print-active-nodes gm))
         svg-file (or svg-file (format "/tmp/%s.svg" name))
         dot-file (str svg-file ".dot")]
     (spit dot-file s)
     (sh/sh "dot" "-Tsvg" "-o" svg-file dot-file)
     (println "wrote" svg-file)
-    (br/browse-url (str "file://" svg-file))))
+    (when open?
+      (br/browse-url (str "file://" svg-file)))))

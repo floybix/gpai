@@ -1,12 +1,10 @@
 (ns io.evolvability.gpai.tree-test
   (:use clojure.test)
   (:require (io.evolvability.gpai [tree :refer :all]
-                                  [lang-float :as langf]
-                                  [utils :refer [arity]])))
+                                  [lang-float :as langf])))
 
 (deftest expressions-test
-  (let [fs (conj langf/funcset 0.0)
-        lang (map (juxt identity arity) fs)
+  (let [lang (conj langf/lang [0.0])
         ins '[a b c]]
     (testing "Generate random expressions."
       (is (let [t (gen-terminal ins {})]
@@ -18,10 +16,9 @@
         (is (seq (:expr (crossover-subtrees gm gm))) "Crossover")))))
 
 (deftest eval-test
-  (let [fs (conj langf/funcset 0.0)
-        lang (map (juxt identity arity) fs)
+  (let [lang (conj langf/lang [0.0])
         ins '[a b c]]
     (testing "Eval generated expressions as a function"
-      (let [f (genome->fn (rand-genome ins lang {}))]
+      (let [f (function (rand-genome ins lang {}))]
         (is (function? f) "Generate function")
-        (is (number? (or (f 1 2 3) 0)) "Evaluates to a number or nil")))))
+        (is (number? (f 1 2 3)) "Evaluates to a number")))))

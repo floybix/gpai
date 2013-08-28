@@ -1,58 +1,57 @@
-(ns io.evolvability.gpai.lang-integer)
+(ns io.evolvability.gpai.lang-integer
+  "GP functions working with integral (long) data.
+   Division by zero is handled by returning 1.
+   These intentionally allow integer overflow to occur silently.
+   They will fail on a nil input.")
+
+(def lang
+  "Functions to work with integral (long) inputs. They will work with
+   general clojure number inputs, but go faster with primitive longs.
+   A vector of [symbol function-arity] tuples."
+  `[[_abs_ 1]
+    [_+_ 2]
+    [_*_ 2]
+    [_-_ 2]
+    [_quot_ 2]
+    [_mod_ 2]
+    [min 2]
+    [max 2]
+    [_if<_ 4]
+    [_if=_ 4]
+    ])
 
 (defn _abs_
-  [x]
-  (if (neg? x) (unchecked-negate (long x)) x))
+  ^long [^long x]
+  (Math/abs x))
 
 (defn _+_
-  [x y]
+  ^long [^long x ^long y]
   (unchecked-add (long x) (long y)))
 
 (defn _*_
-  [x y]
+  ^long [^long x ^long y]
   (unchecked-multiply (long x) (long y)))
 
 (defn _-_
-  [x y]
+  ^long [^long x ^long y]
   (unchecked-subtract (long x) (long y)))
 
 (defn _quot_
-  [x y]
-  (if (zero? y)
+  ^long [^long x ^long y]
+  (if (= y 0)
     1
     (quot x y)))
 
 (defn _mod_
-  [x y]
-  (if (zero? y)
+  ^long [^long x ^long y]
+  (if (= y 0)
     1
     (mod x y)))
 
-(defn _min_
-  [x y]
-  (min x y))
-
-(defn _max_
-  [x y]
-  (max x y))
-
 (defn _if<_
-  [x y a b]
+  ^long [^long x ^long y ^long a ^long b]
   (if (< x y) a b))
 
 (defn _if=_
-  [x y a b]
-  (if (== x y) a b))
-
-(def funcset
-  "Function symbols for integer arithmetic."
-  `#{_abs_
-     _+_
-     _-_
-     _*_
-     _quot_
-     _mod_
-     _min_
-     _max_
-     _if<_
-     _if=_})
+  ^long [^long x ^long y ^long a ^long b]
+  (if (= x y) a b))

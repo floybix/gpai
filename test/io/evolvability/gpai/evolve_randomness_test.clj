@@ -2,11 +2,11 @@
   (:use clojure.test
         [clojure.pprint :only [pprint]])
   (:require (io.evolvability.gpai [lang-integer :as langi]
-                                  [utils :as utils :refer [arity]]
                                   [cgp :as cgp]
                                   [cgp-viz :as cgp-viz]
                                   [evolution :as evo]
-                                  [coevolution :as coevo])
+                                  [coevolution :as coevo]
+                                  [utils :as utils])
             [io.evolvability.gpai.problems.randomness :as rness]))
 
 (defn print-fitness-ranges
@@ -38,18 +38,20 @@
 
 (deftest evolve-randomness-test
   (testing "Can coevolve using cgp."
-    (let [fs (conj langi/funcset `rness/_nth-bit_ 0)
-          lang (map (juxt identity arity) fs)
+    (let [lang (into langi/lang [[`rness/_nth-bit_ 2]
+                                 [0]])
           gen-inm ["seed"]
           gen-nout 2
           disc-inm ["x" "i1" "i2" "i3" "i4" "i5" "i6"]
           disc-n (count disc-inm)
-          opts {:erc-prob 0.25
+          mag 1024
+          opts {:data-type 'long
+                :erc-prob 0.25
                 :erc-gen #(rand-int 16)}
           fitness (fn [gen disc]
                     (let [gen-f (cgp/function gen)
                           disc-f (cgp/function disc)]
-                      (rness/duel 16 16 gen-f disc-f disc-n)))
+                      (rness/duel 16 16 mag gen-f disc-f disc-n)))
           regen (evo/regenerate-fn cgp/mutate
                                    nil ;; no crossover
                                    :select-n 1
@@ -86,7 +88,7 @@
         (println "generator seqs in each peak (seed 3):")
         (doseq [gen gsel
                 :let [gen-f (cgp/function gen)]]
-          (println (rness/gen-seq gen-f 16 3)))
+          (println (rness/gen-seq gen-f 16 mag 3)))
         (println))
       ;; print out final results
       (let [final (last (:history soln))
@@ -94,29 +96,30 @@
             disc (:best (:b final))
             gen-f (cgp/function gen)
             disc-f (cgp/function disc)
+            run-gen (partial rness/gen-seq gen-f 16 mag)
             run-disc (partial rness/nonrandomness-score disc-f disc-n)]
         (println "FINAL RESULTS")
         (println)
         (println "generator sequence:")
         (println "seed 1")
-        (println (rness/gen-seq gen-f 16 1))
+        (println (run-gen 1))
         (println "seed 2")
-        (println (rness/gen-seq gen-f 16 2))
+        (println (run-gen 2))
         (println "seed 3")
-        (println (rness/gen-seq gen-f 16 3))
+        (println (run-gen 3))
         (println "seed 12")
-        (println (rness/gen-seq gen-f 16 12))
+        (println (run-gen 12))
         (println)
         (println "discriminator scores on generator seqs above:")
-        (println (run-disc (rness/gen-seq gen-f 16 1)))
-        (println (run-disc (rness/gen-seq gen-f 16 2)))
-        (println (run-disc (rness/gen-seq gen-f 16 3)))
-        (println (run-disc (rness/gen-seq gen-f 16 12)))
+        (println (run-disc (run-gen 1)))
+        (println (run-disc (run-gen 2)))
+        (println (run-disc (run-gen 3)))
+        (println (run-disc (run-gen 12)))
         (println "discriminator scores on random seqs:")
-        (let [r1 (rness/rand-seq 16 1)
-              r2 (rness/rand-seq 16 2)
-              r3 (rness/rand-seq 16 3)
-              r12 (rness/rand-seq 16 12)]
+        (let [r1 (rness/rand-seq 16 mag 1)
+              r2 (rness/rand-seq 16 mag 2)
+              r3 (rness/rand-seq 16 mag 3)
+              r12 (rness/rand-seq 16 mag 12)]
           (println (run-disc r1))
           (println (run-disc r2))
           (println (run-disc r3))
@@ -126,8 +129,8 @@
           (println r2)
           (println r3))
         (println "genome of generator.")
-        (cgp-viz/viz-active-nodes gen :name "generator")
+        (cgp-viz/viz-active-nodes gen :name "generator" :open? false)
         (println "...")
         (println "genome of discriminator.")
-        (cgp-viz/viz-active-nodes disc :name "discriminator")
+        (cgp-viz/viz-active-nodes disc :name "discriminator" :open? false)
         ))))

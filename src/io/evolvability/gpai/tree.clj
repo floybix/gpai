@@ -14,8 +14,6 @@
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector, with functions given as
    [fn-symbol arity], and constants as [value nil] or just [value].
-   Function arities can be looked up with `utils/arity` which also
-   returns nil for non-symbols.
 
    The `:options` map can hold parameters passed on to generation and
    mutation functions:
@@ -28,7 +26,8 @@
    * :erc-gen (default #(rand 10.0)) a function of no arguments to
      generate an ERC."
   (:require [io.evolvability.gpai.utils :as utils]
-            [clojure.zip :as zip]))
+            [clojure.zip :as zip]
+            [clojure.walk :as walk]))
 
 (defn gen-terminal
   "ERCs are generated according to :erc-prob by calling :erc-gen.
@@ -143,11 +142,16 @@
                                        (:expr gm2))]
     (trim (assoc gm1 :expr nexpr))))
 
-(defn genome->fn
+(defn genome->expr
+  "Converts a genome into a quoted function expression."
+  [{:as gm :keys [expr inputs]}]
+  `(fn ~inputs ~expr))
+
+(defn function
   "Converts a genome into a function, using `eval`. Assumes that all
    lang symbols are fully qualified."
-  [{:as gm :keys [expr inputs]}]
-  (eval `(fn ~inputs ~expr)))
+  [gm]
+  (eval (genome->expr gm)))
 
 (defn expr-depth
   "Returns the maximum depth of nesting in the expression."

@@ -1,53 +1,51 @@
-(ns io.evolvability.gpai.lang-float)
+(ns io.evolvability.gpai.lang-float
+  "GP functions working with floating point (double) data.
+   Division by zero is handled by returning 1.0.
+   They will fail on a nil input.")
+
+(def lang
+  "Functions to work with floating point (double) inputs. They will
+   work with general clojure number inputs, but go faster with
+   primitive doubles. A vector of [symbol function-arity] tuples."
+  `[[_abs_ 1]
+    [_+_ 2]
+    [_*_ 2]
+    [_-_ 2]
+    [_div_ 2]
+    [_mod_ 2]
+    [min 2]
+    [max 2]
+    [_if<_ 4]
+    ])
 
 (defn _abs_
-  [x]
-  (if (neg? x) (- x) x))
+  ^double [^double x]
+  (Math/abs x))
 
 (defn _+_
-  [x y]
+  ^double [^double x ^double y]
   (+ x y))
 
 (defn _*_
-  [x y]
+  ^double [^double x ^double y]
   (* x y))
 
 (defn _-_
-  [x y]
+  ^double [^double x ^double y]
   (- x y))
 
 (defn _div_
-  [x y]
+  ^double [^double x ^double y]
   (if (< (_abs_ y) 1e-6)
     1.0
     (/ x y)))
 
 (defn _mod_
-  [x y]
+  ^double [^double x ^double y]
   (if (< (_abs_ y) 1e-6)
     1.0
     (mod x y)))
 
-(defn _min_
-  [x y]
-  (min x y))
-
-(defn _max_
-  [x y]
-  (max x y))
-
 (defn _if<_
-  [x y a b]
+  ^double [^double x ^double y ^double a ^double b]
   (if (< x y) a b))
-
-(def funcset
-  "Function symbols for floating point arithmetic."
-  `#{_abs_
-     _+_
-     _-_
-     _*_
-     _div_
-     _mod_
-     _min_
-     _max_
-     _if<_})

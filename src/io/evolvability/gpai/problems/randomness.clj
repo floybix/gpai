@@ -8,7 +8,7 @@
 
    A typical duel is run as follows. The Generator makes up 16
    sequences, each of length 16, of integers in the range 0 to
-   1024 (*magnitude*). The Generator is passed a seed for each
+   1024 (magnitude). The Generator is passed a seed for each
    sequence starting at 0 and incrementing by 1. A similar set of a
    sequences are built by a Random Number Generator. The Discriminator
    is then presented with these one at a time and responds with
@@ -33,28 +33,24 @@
    iteration. These state arguments are initially 0."
   (:require [clojure.data.generators :as gen]))
 
-(def ^:dynamic *magnitude* 1024)
-
 ;; this is an example only, can be varied
 (def discriminator-inputs '[x i1 i2 i3 i4 i5 i6])
 
 (def generator-inputs '[seed])
 
-(defn- abs [x] (if (neg? x) (unchecked-negate (long x)) x))
-
 (defn _nth-bit_
   "Tests bit at binary position `(abs n)` of integer `(abs x)`
    returning 1 or 0."
-  [x n]
-  (if (bit-test (abs x) (abs n))
+  ^long [^long x ^long n]
+  (if (bit-test (Math/abs x) (Math/abs n))
     1 0))
 
 (defn rand-seq
   "Return a sequence of `n` uniform random integers within
-   `*magnitude*` given a random seed."
-  [n seed]
+   `magnitude` given a random seed."
+  [n magnitude seed]
   (binding [gen/*rnd* (java.util.Random. seed)]
-    (repeatedly n #(gen/uniform 0 *magnitude*))))
+    (repeatedly n #(gen/uniform 0 magnitude))))
 
 (defn nonrandomness-score
   "Iterate the discriminator function over the integer sequence `xs`
@@ -68,14 +64,14 @@
 (defn gen-seq
   "Iterate the generator function for an output sequence of length
    `length`, taking initial seed `seed`."
-  [generator length seed]
+  [generator length magnitude seed]
   (loop [out []
          z seed
          i length]
     (if (zero? i)
       out
       (let [[o nz] (generator z)
-            o-ok (mod (abs o) *magnitude*)]
+            o-ok (mod (Math/abs (long o)) magnitude)]
         (recur (conj out o-ok) nz (dec i))))))
 
 (defn duel
@@ -86,9 +82,9 @@
    separately. Note that the number of inputs expected by the
    discriminator must be passed in here. Fitness values are returned
    as [generator-fitness discriminator-fitness]."
-  [n-seq length generator discriminator n-in]
-  (let [gs (map (partial gen-seq generator length) (range n-seq))
-        rs (map (partial rand-seq length) (range n-seq))
+  [n-seq length magnitude generator discriminator n-in]
+  (let [gs (map (partial gen-seq generator length magnitude) (range n-seq))
+        rs (map (partial rand-seq length magnitude) (range n-seq))
         run-disc (partial nonrandomness-score discriminator n-in)
         gos (map run-disc gs)
         ros (map run-disc rs)

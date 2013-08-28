@@ -13,8 +13,6 @@
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector, with functions given as
    [fn-symbol arity], and constants as [value nil] or just [value].
-   Function arities can be looked up with `utils/arity` which also
-   returns nil for non-symbols.
 
    Each node is a map like
    `{:fn 'foo, :in [1 4 1 ...]}`
@@ -43,11 +41,15 @@
    accessed with `function` in this namespace. The option
    `:precompile?` (default true) determines whether the function is
    compiled immediately on construction of the genome and cached in
-   metadata. Any alterations to the genome outside of the functions
-   provided in this namespace should clear/refresh the cache with
-   `recache`. It can check whether the active part of the genome has
-   in fact changed, since mutations often do not affect the active
-   nodes.")
+   metadata. Any alterations to the genome should clear/refresh the
+   cache with `recache` (as functions in this namespace do). It can
+   check whether the active part of the genome has in fact changed,
+   since mutations often do not affect the active nodes.
+
+   Functions can be compiled with primitive argument declarations (or
+   casts) by giving option :data-type as a symbol 'long or 'double.
+   This will only be of benefit if the lang functions are declared to
+   take the same primitive argument types.")
 
 (declare recache)
 
@@ -143,12 +145,23 @@
 (defn genome->expr
   "Converts a genome into a quoted function expression.
    This is like a macro, but at runtime."
-  [{:as gm :keys [nodes out-idx inputs]}]
-  (let [size (count nodes)
+  [{:as gm :keys [nodes out-idx inputs options]}]
+  (let [data-type (:data-type options nil)
+        size (count nodes)
         n-in (count inputs)
         active (sort (seq (active-idx gm)))
         syms (mapv #(symbol (str "nd-" % "_")) (range size))
-        lets (loop [lets []
+        args (subvec syms 0 n-in)
+        ;; can do primitive declarations on up to 4 args (clojure limit)
+        prim-args? (and data-type (<= (count args) 4))
+        args (if prim-args?
+               (mapv #(vary-meta % assoc :tag data-type) args)
+               args)
+        ;; otherwise can do hints/casts on inputs: (long x) or (double x)
+        init-lets (if (and data-type (not prim-args?))
+                    (mapcat #(list % (list data-type %)) args)
+                    [])
+        lets (loop [lets (vec init-lets)
                     more (drop-while #(< % n-in) active)]
                (if-let [i (first more)]
                  (let [nd (nth nodes i)
@@ -160,7 +173,6 @@
                           (next more)))
                  ;; done
                  lets))
-        args (subvec syms 0 n-in)
         outs (mapv (partial nth syms) out-idx)]
     `(fn ~args (let ~lets ~outs))))
 

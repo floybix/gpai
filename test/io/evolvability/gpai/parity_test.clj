@@ -1,18 +1,16 @@
 (ns io.evolvability.gpai.parity-test
   (:use clojure.test)
   (:require (io.evolvability.gpai [lang-logic :as logic]
-                                  [utils :refer [arity]]
                                   [cgp :as cgp]
                                   [evolution :as evo])
             [io.evolvability.gpai.problems.parity :as parity]))
 
 (defn n-parity-fitness
   [n]
-  (let [fs `#{logic/_and_
-              logic/_or_
-              logic/_nand_
-              logic/_nor_}
-        lang (map (juxt identity arity) fs)
+  (let [lang `[[logic/_and_ 2]
+               [logic/_or_ 2]
+               [logic/_nand_ 2]
+               [logic/_nor_ 2]]
         inm (mapv #(str "i" %) (range n))
         opts {:erc-prob 0.0}
         inputs (parity/gen-inputs n)

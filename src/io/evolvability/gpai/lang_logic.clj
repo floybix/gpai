@@ -1,4 +1,12 @@
-(ns io.evolvability.gpai.lang-logic)
+(ns io.evolvability.gpai.lang-logic
+  "GP functions working with boolean data.")
+
+(def lang
+  `[[_and_ 2]
+    [_or_ 2]
+    [not 2]
+    [_xor_ 2]
+    [_if_ 3]])
 
 (defn _and_
   [x y]
@@ -7,10 +15,6 @@
 (defn _or_
   [x y]
   (or x y))
-
-(defn _not_
-  [x]
-  (not x))
 
 (defn _xor_
   [x y]
@@ -28,10 +32,3 @@
 (defn _if_
   [x a b]
   (if x a b))
-
-(def funcset-basic
-  `#{_and_
-     _or_
-     _not_
-     _xor_
-     _if_})
