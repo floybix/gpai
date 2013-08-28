@@ -34,41 +34,32 @@
    value is its average over all parasites, since the number of
    parasites can vary over generations.
 
-   * init-popn-a is the initial :a population collection.
-   * init-popn-b is the initial :b population collection.
+   * `init-popn-a`is the initial :a population collection.
+   * `init-popn-b` is the initial :b population collection.
    * fitness function is applied to two individuals in order [a b],
      and returns their respective fitness scores (a vector of 2
      numbers), typically the number of fitness cases won by each.
    * parasites function is used to select a few individuals as worthy
      opponents (based on quality and diversity). It is called with 3
      arguments:
-     * the sub-population from which to select representatives. This
-       is the previous, fitness-evaluated population, or the initial
-       population in the first generation.
-     * the history vector.
-     * the sub-population identifier, :a or :b.
+     1. the sub-population from which to select representatives. This
+        is the previous, fitness-evaluated population, or the initial
+        population in the first generation.
+     2. the history vector.
+     3. the sub-population identifier, :a or :b.
    * regenerate functions are applied to each fitness-evaluated
      sub-population. They should return a corresponding new population
      with new individuals that are typically derived by mutation or
      crossover.
+
    Other options are passed on to `evolve-discrete`. The default
    `:distil` is `stratified-basic-distil` and the default `:progress`
    is `stratified-print-progress`."
-  ([init-popn-a init-popn-b
-    fitness
-    parasites-fn
-    regenerate
-    options]
-     (coevolve init-popn-a init-popn-b
-               fitness
-               parasites-fn parasites-fn
-               regenerate regenerate
-               options))
-  ([init-popn-a init-popn-b
-    fitness
-    parasites-fn-a parasites-fn-b
-    regenerate-a regenerate-b
-    options]
+  ([init-popn-a init-popn-b fitness parasites-fn regenerate options]
+     (coevolve init-popn-a init-popn-b fitness parasites-fn
+               regenerate regenerate options))
+  ([init-popn-a init-popn-b fitness parasites-fn
+    regenerate-a regenerate-b options]
      (let [options (merge {:distil #'stratified-basic-distil
                            :progress! #'stratified-print-progress}
                           options)
@@ -89,10 +80,10 @@
            eval-popn (fn [xs prev-xs history]
                        (let [strata (group-by (comp ::popn meta) xs)
                              pstrata (group-by (comp ::popn meta) prev-xs)
-                             a-paras (parasites-fn-a (or (:a pstrata) (:a strata))
-                                                     history :a)
-                             b-paras (parasites-fn-b (or (:b pstrata) (:b strata))
-                                                     history :b)]
+                             a-paras (parasites-fn (or (:a pstrata) (:a strata))
+                                                   history :a)
+                             b-paras (parasites-fn (or (:b pstrata) (:b strata))
+                                                   history :b)]
                          (concat (map #(eval-fitness-a % b-paras) (:a strata))
                                  (map #(eval-fitness-b % a-paras) (:b strata)))))
            regenerate (fn [xs]

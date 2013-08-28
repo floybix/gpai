@@ -17,6 +17,7 @@
 
    The `:options` map can hold parameters passed on to generation and
    mutation functions:
+
    * :max-expr-depth (default 8) maximum expression depth.
    * :terminal-prob (default 0.5) point probability of generating a
      terminal as opposed to a function call expression.

@@ -28,13 +28,14 @@
 
    The `:options` map can hold parameters passed on to generation and
    mutation functions:
-   * :gene-mut-rate point mutation probability for each
+
+   * `:gene-mut-rate` point mutation probability for each
      gene (including function gene and input genes at each node) and
      output index (default 0.03).
-   * :erc-prob point probability of generating an Ephemeral Random
+   * `:erc-prob` point probability of generating an Ephemeral Random
      Constant (ERC) as opposed to an input symbol given that we are
      generating a terminal (default 0.0).
-   * :erc-gen (default #(rand 10.0)) a function of no arguments to
+   * `:erc-gen` (default `#(rand 10.0)`) a function of no arguments to
      generate an ERC.
 
    For performance, a genotype is compiled to a function, which can be

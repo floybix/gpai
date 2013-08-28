@@ -19,6 +19,7 @@
   "Returns a regenerate function taking a fitness-evaluated population
    and deriving the next generation population. This involves both
    selection and variation. It applies the given operators:
+
    * first, the top :select-n individuals by fitness are selected,
      i.e. the remainder are discarded.
    * a number :elitism of highest-fitness individuals are preserved.
@@ -82,11 +83,11 @@
 
    * init-popn is the initial population collection.
    * eval-popn-fitness function is called with 3 arguments:
-     * the current population collection, having been regenerated,
-       generally without fitness values;
-     * the previous, fitness-evaluated population, usually nil on the
-       first generation (see option `:prev-popn`);
-     * the history vector, accumulated results from distil function.
+     1. the current population collection, having been regenerated,
+        generally without fitness values;
+     2. the previous, fitness-evaluated population, usually nil on the
+        first generation (see option `:prev-popn`);
+     3. the history vector, accumulated results from distil function.
      It must return the same individuals with fitness values in
      metadata key ::fitness. (Allowing the sequence order to change,
      for convenience.) Larger numbers represent higher fitness. The
@@ -98,6 +99,7 @@
      population need not be the same size.
 
    Options map keys:
+
    * The evolution returns after `:n-gens` generations (default 100)
      or when fitness reaches `:target` (default infinity).
    * distil function takes the fitness-evaluated population collection
@@ -107,9 +109,9 @@
      `eval-popn-fitness` and is eventually returned by this function.
    * The function `:progress!` is called every generation, after
      `eval-popn-fitness` is called, with 3 arguments:
-     * the generation number;
-     * the fitness-evaluated population from the current generation;
-     * the history vector, including the current generation.
+     1. the generation number;
+     2. the fitness-evaluated population from the current generation;
+     3. the history vector, including the current generation.
      The default prints fitness summaries. Another use would be to
      write out the current state to a backup file.
      To call `:progress!` only every nth generation the option
@@ -121,9 +123,10 @@
      snapshot.
 
    Returns a map with keys
-   * :popn final population with fitness values;
-   * :history the history vector;
-   * :n-gens number of generations run."
+
+   * `:popn` final population with fitness values
+   * `:history` the history vector
+   * `:n-gens` number of generations run."
   [init-popn eval-popn-fitness regenerate
    {:keys [n-gens target distil progress! progress-every prev-popn]
     :or {n-gens 100
@@ -156,6 +159,7 @@
 (defn simple-evolve
   "High-level evolution function where fitness is simply a function of
    any one individual.
+
    * init-popn is the initial population collection.
    * fitness function is applied to an individual, returning numeric
      where larger numbers represent higher fitness. Consider

@@ -1,5 +1,7 @@
 = TODO =
 
+* use data.generators for all randomness, to control seed.
+  useful in performance testing.
 
 == problems ==
 

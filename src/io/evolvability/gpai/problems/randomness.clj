@@ -33,7 +33,7 @@
    iteration. These state arguments are initially 0."
   (:require [clojure.data.generators :as gen]))
 
-;; this is an example only, can be varied
+;; Note this is an example only, number of inputs be varied.
 (def discriminator-inputs '[x i1 i2 i3 i4 i5 i6])
 
 (def generator-inputs '[seed])
