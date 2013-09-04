@@ -1,5 +1,6 @@
 (ns io.evolvability.gpai.evolution
-  (:require [io.evolvability.gpai.utils :as utils]))
+  (:require [io.evolvability.gpai.utils :as utils]
+            [clojure.data.generators :as gen]))
 
 (defn get-fitness
   "Returns the previously calculated fitness value stored in metadata
@@ -34,11 +35,11 @@
     (let [n (count xs)
           n-mutate (long (* (- n elitism) mutation-prob))
           ;; shuffle to avoid deterministic elitism with equal fitness
-          sortd (sort-by (comp - get-fitness) (shuffle xs))
+          sortd (sort-by (comp - get-fitness) (gen/shuffle xs))
           parents (take select-n sortd)
-          new-mutant #(mutate (rand-nth parents))
-          new-child #(crossover (rand-nth parents)
-                                (rand-nth parents))]
+          new-mutant #(mutate (gen/rand-nth parents))
+          new-child #(crossover (gen/rand-nth parents)
+                                (gen/rand-nth parents))]
       (concat (take elitism parents)
               (repeatedly n-mutate new-mutant)
               (repeatedly (- n elitism n-mutate) new-child)))))

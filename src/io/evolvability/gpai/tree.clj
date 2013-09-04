@@ -24,9 +24,10 @@
    * :erc-prob point probability of generating an Ephemeral Random
      Constant (ERC) as opposed to an input symbol given that we are
      generating a terminal (default 0.0).
-   * :erc-gen (default #(rand 10.0)) a function of no arguments to
-     generate an ERC."
+   * :erc-gen (default #(* (gen/double) 10.0)) a function of no
+     arguments to generate an ERC."
   (:require [io.evolvability.gpai.utils :as utils]
+            [clojure.data.generators :as gen]
             [clojure.zip :as zip]
             [clojure.walk :as walk]))
 
@@ -36,10 +37,10 @@
   [terminals {:as options
               :keys [erc-prob erc-gen]
               :or {erc-prob 0.0
-                   erc-gen #(rand 10.0)}}]
-  (if (< (rand) erc-prob)
+                   erc-gen #(* (gen/double) 10.0)}}]
+  (if (< (gen/double) erc-prob)
     (erc-gen)
-    (rand-nth terminals)))
+    (gen/rand-nth terminals)))
 
 (defn gen-expr
   "Generate a random expression sub-tree. Terminals occur according to
@@ -53,9 +54,9 @@
                                      max-expr-depth 8}}]
      (if (and (> from-depth 0) ;; terminals not allowed at root
               (or (>= from-depth max-expr-depth) ;; limit depth
-                  (< (rand) terminal-prob)))
+                  (< (gen/double) terminal-prob)))
        (gen-terminal terminals options)
-       (let [[f n] (rand-nth (seq funcs))
+       (let [[f n] (gen/rand-nth (seq funcs))
              gen-next-expr #(gen-expr funcs terminals (inc from-depth)
                                       options)]
          (list* f (repeatedly n gen-next-expr))))))
@@ -82,7 +83,7 @@
   (let [z (zip/seq-zip (seq expr))
         locs (take-while (comp not zip/end?)
                          (iterate zip/next z))
-        loc (rand-nth locs)
+        loc (gen/rand-nth locs)
         ;; check for function position; can not put a terminal there!
         funcpos? (and (empty? (zip/lefts loc))
                       (seq (zip/path loc)))]

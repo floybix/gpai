@@ -4,6 +4,7 @@
                                   [tree :as tree]
                                   [evolution :as evo])
             [io.evolvability.gpai.problems.circle :as circle]
+            [clojure.data.generators :as gen]
             [clojure.pprint :as pp]))
 
 (deftest evolution-test
@@ -12,7 +13,7 @@
     (let [lang (conj langf/lang [0.0])
           ins circle/inputs
           opts {:erc-prob 0.25
-                :erc-gen #(rand 5.0)}
+                :erc-gen #(* (gen/double) 5.0)}
           inputs (circle/grid-inputs 4 (range 1 5))
           fitness (fn [gm]
                     ;; take a positive number as classified "true"

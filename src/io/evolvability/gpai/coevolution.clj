@@ -1,6 +1,7 @@
 (ns io.evolvability.gpai.coevolution
   (:require (io.evolvability.gpai [evolution :as evo]
-                                  [utils :as utils])))
+                                  [utils :as utils])
+            [clojure.data.generators :as gen]))
 
 (defn get-popn
   "Returns the sub-population identifier stored in metadata
@@ -117,10 +118,10 @@
           chfit (map evo/get-fitness champs)
           fitpeaks (utils/ts-peaks chfit)
           selpeaks (->> fitpeaks
-                        shuffle
+                        gen/shuffle
                         (sort-by (comp - :value))
                         (take (* 2 m))
-                        (shuffle)
+                        gen/shuffle
                         (take m))
           hist-champs (map (fn [peak]
                              (nth champs (:end peak)))

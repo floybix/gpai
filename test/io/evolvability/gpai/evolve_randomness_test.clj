@@ -7,7 +7,8 @@
                                   [evolution :as evo]
                                   [coevolution :as coevo]
                                   [utils :as utils])
-            [io.evolvability.gpai.problems.randomness :as rness]))
+            [io.evolvability.gpai.problems.randomness :as rness]
+            [clojure.data.generators :as gen]))
 
 (defn print-fitness-ranges
   "Plot fitness with a text line mapped to fitness range [-16 16]."
@@ -47,7 +48,7 @@
           mag 1024
           opts {:data-type 'long
                 :erc-prob 0.25
-                :erc-gen #(rand-int 16)}
+                :erc-gen #(gen/long 0 16)}
           fitness (fn [gen disc]
                     (let [gen-f (cgp/function gen)
                           disc-f (cgp/function disc)]

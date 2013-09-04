@@ -35,8 +35,8 @@
    * `:erc-prob` point probability of generating an Ephemeral Random
      Constant (ERC) as opposed to an input symbol given that we are
      generating a terminal (default 0.0).
-   * `:erc-gen` (default `#(rand 10.0)`) a function of no arguments to
-     generate an ERC.
+   * `:erc-gen` (default `#(* (gen/double) 10.0)`) a function of no
+     arguments to generate an ERC.
 
    For performance, a genotype is compiled to a function, which can be
    accessed with `function` in this namespace. The option
@@ -50,7 +50,8 @@
    Functions can be compiled with primitive argument declarations (or
    casts) by giving option :data-type as a symbol 'long or 'double.
    This will only be of benefit if the lang functions are declared to
-   take the same primitive argument types.")
+   take the same primitive argument types."
+  (:require [clojure.data.generators :as gen]))
 
 (declare recache)
 
@@ -65,7 +66,7 @@
 
 (defn- rand-link
   [offset]
-  (inc (rand-int offset)))
+  (gen/uniform 1 (inc offset)))
 
 (defn rand-node
   "Returns a new node at the given offset (which constrains the
@@ -75,11 +76,11 @@
   [offset lang {:as options
                 :keys [erc-prob erc-gen]
                 :or {erc-prob 0.0
-                     erc-gen #(rand 10.0)}}]
-  (if (< (rand) erc-prob)
+                     erc-gen #(* (gen/double) 10.0)}}]
+  (if (< (gen/double) erc-prob)
     (let [v (erc-gen)]
       {:fn nil :in [] :value v})
-    (let [[x n] (rand-nth (seq lang))]
+    (let [[x n] (gen/rand-nth (seq lang))]
       (if n
         {:fn x :in (vec (repeatedly n #(rand-link offset)))}
         {:fn nil :in [] :value x}))))
@@ -92,7 +93,7 @@
   (let [n-in (count inputs)
         in-nodes (repeat n-in {})
         fn-nodes (map #(rand-node % lang options) (range n-in size))
-        out-idx (repeatedly n-out #(rand-nth (range n-in size)))]
+        out-idx (repeatedly n-out #(gen/rand-nth (range n-in size)))]
     (genome inputs (concat in-nodes fn-nodes) out-idx lang options)))
 
 (defn active-idx
@@ -227,13 +228,13 @@
         nds (loop [i n-in
                    nds nodes]
               (if (< i (count nodes))
-                (if (< (rand) gene-mut-rate)
+                (if (< (gen/double) gene-mut-rate)
                   ;; mutate function
                   (let [nnd (mutate-function-gene (nth nds i) i lang options)]
                     (recur (inc i) (assoc nds i nnd)))
                   ;; otherwise, possibly mutate input links
                   (let [in (get-in nds [i :in])
-                        m?s (repeatedly (count in) #(< (rand) gene-mut-rate))]
+                        m?s (repeatedly (count in) #(< (gen/double) gene-mut-rate))]
                     (if (some true? m?s)
                       (let [nin (mapv (fn [m? x] (if m? (rand-link i) x))
                                       m?s in)]
@@ -243,8 +244,8 @@
                 ;; done
                 nds))
         oi (mapv (fn [i]
-                   (if (< (rand) gene-mut-rate)
-                     (rand-nth (range n-in (count nodes))) ;; exclude inputs
+                   (if (< (gen/double) gene-mut-rate)
+                     (gen/rand-nth (range  n-in (count nodes))) ;; exclude inputs
                      i))
                  out-idx)]
     (-> (assoc gm :nodes nds :out-idx oi)
