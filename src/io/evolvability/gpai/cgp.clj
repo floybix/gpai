@@ -12,7 +12,8 @@
 
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector, with functions given as
-   [fn-symbol arity], and constants as [value nil] or just [value].
+   [symbol arity], and constants as [value nil] or just [value].
+   Actually macros can be used as well as functions.
 
    Each node is a map like
    `{:fn 'foo, :in [1 4 1 ...]}`
@@ -114,36 +115,6 @@
       ;; done
       act)))
 
-(defn eval-genome
-  "Takes a vector of input values. Associates values with all active
-  nodes by calling the respective functions, storing the result in
-  :value. Returns the vector of nodes."
-  [{:as gm :keys [nodes out-idx inputs]} input-vals]
-  (let [n-in (count inputs)
-        active (sort (seq (active-idx gm)))
-        in-nodes (map #(hash-map :value %) input-vals)
-        nds (apply assoc nodes (interleave (range n-in)
-                                          in-nodes))]
-    (loop [nds nds
-           to-eval (drop-while #(< % n-in) active)]
-      (if-let [i (first to-eval)]
-        (let [nd (nth nds i)
-              in-idx (map (partial - i) (:in nd))
-              invals (map #(get-in nds [% :value]) in-idx)
-              v (if-let [f (:fn nd)]
-                  (apply (resolve f) invals)
-                  (:value nd))]
-          (recur (assoc-in nds [i :value] v)
-                 (next to-eval)))
-        ;; done
-        nds))))
-
-(defn genome-outputs
-  "Evaluates and returns the genome outputs using given input values."
-  [{:as gm :keys [nodes out-idx inputs]} input-vals]
-  (let [nds (eval-genome gm input-vals)]
-    (mapv #(get-in nds [% :value]) out-idx)))
-
 (defn genome->expr
   "Converts a genome into a quoted function expression.
    This is like a macro, but at runtime."
@@ -178,14 +149,16 @@
         outs (mapv (partial nth syms) out-idx)]
     `(fn ~args (let ~lets ~outs))))
 
+(defn- unchecked-eval
+  [expr]
+  (binding [*unchecked-math* true] (eval expr)))
+
 (defn function
-  "Returns a function corresponding to the genome, possibly cached.
-   This is preferred to `genome-outputs` as the function, once
-   compiled, will be much faster to evaluate."
+  "Returns a function corresponding to the genome, possibly cached."
   [gm]
   (if-let [f (::function (meta gm))]
     f
-    (eval (genome->expr gm))))
+    (unchecked-eval (genome->expr gm))))
 
 (defn recache
   "Clears any cached compiled function and, if option :precompile? is
@@ -201,7 +174,7 @@
         gm
         ;; else - expression changed, recompile
         (vary-meta gm assoc
-                   ::function (eval expr)
+                   ::function (unchecked-eval expr)
                    ::expr expr)))
     ;; else
     (vary-meta gm dissoc ::function ::expr)))

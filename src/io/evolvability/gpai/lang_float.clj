@@ -7,18 +7,18 @@
   "Functions to work with floating point (double) inputs. They will
    work with general clojure number inputs, but go faster with
    primitive doubles. A vector of [symbol function-arity] tuples."
-  `[[_abs_ 1]
-    [_+_ 2]
-    [_*_ 2]
-    [_-_ 2]
+  `[[abs 1]
+    [+ 2]
+    [* 2]
+    [- 2]
     [_div_ 2]
     [_mod_ 2]
     [min 2]
     [max 2]
-    [_if<_ 4]
+    [if< 4]
     ])
 
-(defn _abs_
+(defn abs
   ^double [^double x]
   (Math/abs x))
 
@@ -36,16 +36,16 @@
 
 (defn _div_
   ^double [^double x ^double y]
-  (if (< (_abs_ y) 1e-6)
+  (if (< (abs y) 1e-6)
     1.0
     (/ x y)))
 
 (defn _mod_
   ^double [^double x ^double y]
-  (if (< (_abs_ y) 1e-6)
+  (if (< (abs y) 1e-6)
     1.0
     (mod x y)))
 
-(defn _if<_
-  ^double [^double x ^double y ^double a ^double b]
-  (if (< x y) a b))
+(defmacro if<
+  [x y a b]
+  `(if (< ~x ~y) ~a ~b))

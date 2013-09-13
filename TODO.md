@@ -1,10 +1,11 @@
-= TODO =
+# TODO
 
 * pre / post / assertions
 
 * use expresso to simplify evolved arithmetic expressions
+  * specify rules for language sets
 
-== problems ==
+## problems
 
 * random number generators
   * visualise evolution progress
@@ -29,7 +30,7 @@
 * learning
   * hunt the wumpus
 
-== methods ==
+## methods
 
 * ecgp
 

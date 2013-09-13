@@ -21,14 +21,6 @@
       (let [gm (rand-genome inm 16 2 lang {})]
         (is (vector? (:nodes (mutate gm))) "Mutate")))))
 
-(deftest eval-test
-  (let [lang (conj langf/lang [0.0])
-        inm ["a" "b" "c"]]
-    (testing "Evalulate generated expressions by walking nodes"
-      (let [gm (rand-genome inm 16 2 lang {})]
-        (is (every? number? (genome-outputs gm [1 2 3]))
-            "Evaluates to numbers")))))
-
 (def gm1
   '{:inputs ["a" "b" "c"],
     :nodes [{}

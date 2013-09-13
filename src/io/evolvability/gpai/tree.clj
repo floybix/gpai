@@ -13,7 +13,8 @@
 
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector, with functions given as
-   [fn-symbol arity], and constants as [value nil] or just [value].
+   [symbol arity], and constants as [value nil] or just [value].
+   Actually macros can be used as well as functions.
 
    The `:options` map can hold parameters passed on to generation and
    mutation functions:
@@ -153,7 +154,8 @@
   "Converts a genome into a function, using `eval`. Assumes that all
    lang symbols are fully qualified."
   [gm]
-  (eval (genome->expr gm)))
+  (binding [*unchecked-math* true]
+    (eval (genome->expr gm))))
 
 (defn expr-depth
   "Returns the maximum depth of nesting in the expression."

@@ -8,7 +8,8 @@
                                   [coevolution :as coevo]
                                   [utils :as utils])
             [io.evolvability.gpai.problems.randomness :as rness]
-            [clojure.data.generators :as gen]))
+            [clojure.data.generators :as gen]
+            [clojure.pprint :as pp]))
 
 (defn print-fitness-ranges
   "Plot fitness with a text line mapped to fitness range [-16 16]."
@@ -134,4 +135,9 @@
         (println "...")
         (println "genome of discriminator.")
         (cgp-viz/viz-active-nodes disc :name "discriminator" :open? false)
+        (binding [pp/*print-suppress-namespaces* true]
+          (println "generator:" gen-inm)
+          (pp/pprint (cgp/genome->expr gen))
+          (println "discriminator:" disc-inm)
+          (pp/pprint (cgp/genome->expr disc)))
         ))))
