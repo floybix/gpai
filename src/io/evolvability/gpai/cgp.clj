@@ -34,10 +34,9 @@
      gene (including function gene and input genes at each node) and
      output index (default 0.03).
    * `:erc-prob` point probability of generating an Ephemeral Random
-     Constant (ERC) as opposed to an input symbol given that we are
-     generating a terminal (default 0.0).
-   * `:erc-gen` (default `#(* (gen/double) 10.0)`) a function of no
-     arguments to generate an ERC.
+     Constant (ERC) as opposed to a language element (default 0.0).
+   * `:erc-gen` a function of no arguments to generate an ERC (default
+     `#(* (gen/double) 10.0)`).
 
    For performance, a genotype is compiled to a function, which can be
    accessed with `function` in this namespace. The option
@@ -56,8 +55,20 @@
 
 (declare recache)
 
+(defn validate-lang!
+  [lang]
+  (assert (sequential? lang))
+  (assert (seq lang))
+  (doseq [item lang]
+    (assert (vector? item))
+    (when (second item)
+      (assert (symbol? (first item)))
+      (assert (integer? (second item)))))
+  true)
+
 (defn genome
   [inputs nodes out-idx lang options]
+  (validate-lang! lang)
   (let [gm {:inputs (vec inputs)
             :nodes (vec nodes)
             :out-idx (vec out-idx)
@@ -65,15 +76,16 @@
             :options options}]
     (recache gm)))
 
-(defn- rand-link
+(defn rand-link
+  "Returns an input link for a node at given offset, as a number of
+   nodes back."
   [offset]
   (gen/uniform 1 (inc offset)))
 
 (defn rand-node
   "Returns a new node at the given offset (which constrains the
-   distance back of input links). ERCs are generated according to
-   erc-prob by calling erc-gen. Otherwise functions are chosen from
-   lang."
+   distance back of input links). Functions are chosen from lang, or
+   ERCs are generated according to `:erc-prob` by calling `:erc-gen`."
   [offset lang {:as options
                 :keys [erc-prob erc-gen]
                 :or {erc-prob 0.0
@@ -150,6 +162,8 @@
     `(fn ~args (let ~lets ~outs))))
 
 (defn- unchecked-eval
+  "Eval with unchecked math to ignore integer overflow (only works for
+   primitive longs)."
   [expr]
   (binding [*unchecked-math* true] (eval expr)))
 
@@ -166,7 +180,7 @@
    false, the genome's evaluation expression (using active nodes) is
    compared to the cached one to see whether recompilation is
    necessary."
-  [{:as gm :keys [nodes out-idx inputs lang options]}]
+  [{:as gm :keys [options]}]
   (if (:precompile? options true)
     (let [expr (genome->expr gm)]
       (if (and (:recache-test? options true)
@@ -218,7 +232,7 @@
                 nds))
         oi (mapv (fn [i]
                    (if (< (gen/double) gene-mut-rate)
-                     (gen/rand-nth (range  n-in (count nodes))) ;; exclude inputs
+                     (gen/rand-nth (range n-in (count nodes))) ;; exclude inputs
                      i))
                  out-idx)]
     (-> (assoc gm :nodes nds :out-idx oi)

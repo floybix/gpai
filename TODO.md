@@ -1,11 +1,37 @@
 # TODO
 
+
+* tests for icgp, typed lang
+
+## methods
+
+* ecgp
+
+* cgp ~crossover/merge by swallowing other genome as a function codebase?
+  * or adopt dominant strategies as global function codebases
+  * automatically defined _closures_ (override some args only)
+
+* island populations
+
+* mutation or optimisation to adjust numeric constants
+
+
+## misc
+
+* cgp consistency with icgp
+  * node links as index number (instead of number back)
+  * delay compilation, remove `:precompile?`
+  * node last-used accounting?
+
 * pre / post / assertions
 
 * use expresso to simplify evolved arithmetic expressions
   * specify rules for language sets
 
+
 ## problems
+
+* santa fe trail ant
 
 * random number generators
   * visualise evolution progress
@@ -29,9 +55,3 @@
 
 * learning
   * hunt the wumpus
-
-## methods
-
-* ecgp
-
-* stack gp? (like pushgp)
