@@ -1,9 +1,15 @@
 # TODO
 
 
-* tests for icgp, typed lang
 
 ## methods
+
+* icgp
+  * currently performs worse than cgp. needs creative destruction?
+    * rather than atrophying Least Recently Used, discard a random one
+    * and any (downstream) dependencies.
+  * nodes in a map, not a vector.
+  * globally unique ids: allows merging genomes!
 
 * ecgp
 
@@ -19,8 +25,6 @@
 ## misc
 
 * cgp consistency with icgp
-  * node links as index number (instead of number back)
-  * delay compilation, remove `:precompile?`
   * node last-used accounting?
 
 * pre / post / assertions

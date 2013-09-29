@@ -1,6 +1,5 @@
 (ns io.evolvability.gpai.evolve-randomness-test
-  (:use clojure.test
-        [clojure.pprint :only [pprint]])
+  (:use clojure.test)
   (:require (io.evolvability.gpai [lang-integer :as langi]
                                   [cgp :as cgp]
                                   [cgp-viz :as cgp-viz]
@@ -54,11 +53,9 @@
                     (let [gen-f (cgp/function gen)
                           disc-f (cgp/function disc)]
                       (rness/duel 16 16 mag gen-f disc-f disc-n)))
-          regen (evo/regenerate-fn cgp/mutate
-                                   nil ;; no crossover
-                                   :select-n 1
-                                   :elitism 1
-                                   :mutation-prob 1.0)
+          regen (evo/negative-selection-fn 1 cgp/mutate
+                                           nil ;; no crossover
+                                           :elitism 1)
           init-gens (repeatedly 30 #(cgp/rand-genome gen-inm 100 gen-nout lang opts))
           init-discs (repeatedly 30 #(cgp/rand-genome disc-inm 100 disc-n lang opts))
           soln (time (coevo/coevolve init-gens init-discs

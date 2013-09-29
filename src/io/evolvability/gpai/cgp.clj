@@ -11,16 +11,17 @@
    `:out-idx` vector contains the node indices to use as outputs.
 
    The `:lang` vector contains the available functions and constants.
-   Each element must itself be a vector, with functions given as
-   [symbol arity], and constants as [value nil] or just [value].
-   Actually macros can be used as well as functions.
+   Each element must itself be a vector with:
+
+   * functions/macros in the form `[symbol arity]`.
+   * constants in the form `[value]`.
 
    Each node is a map like
    `{:fn 'foo, :in [1 4 1 ...]}`
 
    where :fn gives the node function as a namespaced symbol; the :in
-   vector gives pointers to fn arguments as a number of cells back.
-   The number of arguments must match the arity of the node function.
+   vector gives pointers to fn arguments as node indices. The number
+   of arguments must match the arity of the node function.
 
    Some nodes may represent constants. These nodes have :fn nil, :in
    empty and instead store a `:value`.
@@ -38,19 +39,17 @@
    * `:erc-gen` a function of no arguments to generate an ERC (default
      `#(* (gen/double) 10.0)`).
 
-   For performance, a genotype is compiled to a function, which can be
-   accessed with `function` in this namespace. The option
-   `:precompile?` (default true) determines whether the function is
-   compiled immediately on construction of the genome and cached in
+   Genotypes are compiled to functions, via `function` in this
+   namespace. The function is compiled on demand and cached in genome
    metadata. Any alterations to the genome should clear/refresh the
-   cache with `recache` (as functions in this namespace do). It can
+   cache with `recache` (as functions in this namespace do). This can
    check whether the active part of the genome has in fact changed,
    since mutations often do not affect the active nodes.
 
-   Functions can be compiled with primitive argument declarations (or
-   casts) by giving option :data-type as a symbol 'long or 'double.
-   This will only be of benefit if the lang functions are declared to
-   take the same primitive argument types."
+   Functions can be compiled to use primitive data types by giving
+   option :data-type as a symbol 'long or 'double. This will only be
+   of benefit if the lang functions are declared to take and return
+   the same primitive argument types."
   (:require [clojure.data.generators :as gen]))
 
 (declare recache)
@@ -72,15 +71,14 @@
   (let [gm {:inputs (vec inputs)
             :nodes (vec nodes)
             :out-idx (vec out-idx)
-            :lang lang
+            :lang (vec lang)
             :options options}]
     (recache gm)))
 
 (defn rand-link
-  "Returns an input link for a node at given offset, as a number of
-   nodes back."
+  "Returns an index of a node before the given offset."
   [offset]
-  (gen/uniform 1 (inc offset)))
+  (gen/uniform 0 offset))
 
 (defn rand-node
   "Returns a new node at the given offset (which constrains the
@@ -93,10 +91,14 @@
   (if (< (gen/double) erc-prob)
     (let [v (erc-gen)]
       {:fn nil :in [] :value v})
-    (let [[x n] (gen/rand-nth (seq lang))]
-      (if n
-        {:fn x :in (vec (repeatedly n #(rand-link offset)))}
-        {:fn nil :in [] :value x}))))
+    (loop [tries 0]
+      (when (= tries 10) (throw (Exception. "No functions for zero args.")))
+      (let [[x n] (gen/rand-nth (seq lang))]
+        (if-not n
+          {:fn nil :in [] :value x}
+          (if (and (pos? n) (zero? offset))
+            (recur (inc tries))
+            {:fn x :in (vec (repeatedly n #(rand-link offset)))}))))))
 
 (defn rand-genome
   "Generates a new genome with `size` number of nodes, including input
@@ -119,7 +121,7 @@
       (if (>= i (count inputs))
         ;; function node
         (let [nd (nth nodes i)
-              in-idx (map (partial - i) (:in nd))]
+              in-idx (:in nd)]
           (recur (into act in-idx)
                  (into (disj more i) in-idx)))
         ;; input node
@@ -150,9 +152,8 @@
                     more (drop-while #(< % n-in) active)]
                (if-let [i (first more)]
                  (let [nd (nth nodes i)
-                       in-idx (map (partial - i) (:in nd))
                        form (if-let [f (:fn nd)]
-                              (list* f (map (partial nth syms) in-idx))
+                              (list* f (map (partial nth syms) (:in nd)))
                               (:value nd))]
                    (recur (into lets [(nth syms i) form])
                           (next more)))
@@ -168,32 +169,32 @@
   (binding [*unchecked-math* true] (eval expr)))
 
 (defn function
-  "Returns a function corresponding to the genome, possibly cached."
+  "Returns the (cached) function corresponding to the genome."
   [gm]
-  (if-let [f (::function (meta gm))]
-    f
-    (unchecked-eval (genome->expr gm))))
+  (if-let [cached-f (::function (meta gm))]
+    (force cached-f)
+    (recur (recache gm))))
 
 (defn recache
-  "Clears any cached compiled function and, if option :precompile? is
-   not false, compiles a new one. If option :recache-test? is not
-   false, the genome's evaluation expression (using active nodes) is
-   compared to the cached one to see whether recompilation is
-   necessary."
+  "Checks if a cached function is invalid, and if necessary, sets up a
+   delayed evaluation to compile a new one. Tthe genome's evaluation
+   expression (using active nodes) is compared to the cached one to
+   see whether recompilation is necessary. Option `:force-recache`
+   overrides the check."
   [{:as gm :keys [options]}]
-  (if (:precompile? options true)
-    (let [expr (genome->expr gm)]
-      (if (and (:recache-test? options true)
-               (= expr (::expr (meta gm))))
-        gm
-        ;; else - expression changed, recompile
-        (vary-meta gm assoc
-                   ::function (unchecked-eval expr)
-                   ::expr expr)))
-    ;; else
-    (vary-meta gm dissoc ::function ::expr)))
+  (let [expr (genome->expr gm)]
+    (if (and (not (:force-recache options))
+             (::function (meta gm))
+             (= expr (::expr (meta gm))))
+      gm
+      ;; else - need to recompile
+      (vary-meta gm assoc
+                 ::function (unchecked-eval expr)
+                 ::expr expr))))
 
 (defn- mutate-function-gene
+  "Chooses a new function for node `nd` at offset `i`. Reuses existing
+   input link sequence, clipped or extended as needed."
   [nd i lang options]
   (let [nnd (rand-node i lang options)
         k (count (:in nd))
@@ -206,7 +207,7 @@
     (assoc nnd :in in)))
 
 (defn mutate
-  "Mutates each gene (including function gene and input genes at each
+  "Mutates each 'gene' (including function gene and input genes at each
    node) and output index with probability :gene-mut-rate (an option
    key), defaulting to 0.03. Other options are passed to `rand-node`."
   [{:as gm :keys [nodes out-idx inputs lang options]}]

@@ -19,10 +19,9 @@
                     ;; take a positive number as classified "true"
                     (let [f (comp pos? (tree/function gm))]
                       (circle/fitness-fn inputs f)))
-          regen (evo/regenerate-fn tree/mutate-subtree
-                                   tree/crossover-subtrees
-                                   :select-n 2
-                                   :mutation-prob 0.9)
+          regen (evo/negative-selection-fn 2 tree/mutate-subtree
+                                           tree/crossover-subtrees
+                                           :elitism 1)
           init-popn (repeatedly 10 #(tree/rand-genome ins lang opts))
           soln (time (evo/simple-evolve init-popn
                                         fitness

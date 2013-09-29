@@ -1,4 +1,4 @@
-(ns io.evolvability.gpai.parity-test
+(ns io.evolvability.gpai.evolve-parity-test
   (:use clojure.test)
   (:require (io.evolvability.gpai [lang-logic :as logic]
                                   [cgp :as cgp]
@@ -17,10 +17,8 @@
         fitness (fn [gm]
                   (let [f (comp boolean first (cgp/function gm))]
                     (parity/fitness-fn inputs f)))
-        regen (evo/regenerate-fn cgp/mutate
-                                 nil ;; no crossover
-                                 :select-n 1
-                                 :mutation-prob 1.0)
+        regen (evo/negative-selection-fn 1 cgp/mutate nil
+                                         :elitism 1)
         init-popn (repeatedly 5 #(cgp/rand-genome inm 100 1 lang opts))
         soln (time (evo/simple-evolve init-popn
                                       fitness

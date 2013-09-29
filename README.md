@@ -6,12 +6,12 @@ A Clojure library.
 
 Not ready to be used by anyone except me (yet)...
 
-This is designed for problems where the evolved program will be
-executed many times in one individual evaluation. An example is a
-program controlling robot movement at each time step. It will be
-inefficient on toy problems common in the GP literature such as
-*parity* or *symbolic regression* where each individual program is
-evaluated only once (due to compilation and other overheads).
+This is intended for problems where the fitness function dominates the
+computation time. An example is a program controlling robot movement
+at each time step. It will be inefficient on toy problems common in
+the GP literature such as *parity* or *symbolic regression* where each
+individual program is evaluated only once (due to compilation and
+other overheads).
 
 
 ## Usage

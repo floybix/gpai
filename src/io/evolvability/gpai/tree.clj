@@ -39,6 +39,8 @@
               :keys [erc-prob erc-gen]
               :or {erc-prob 0.0
                    erc-gen #(* (gen/double) 10.0)}}]
+  (assert (or (seq terminals) (== 1.0 erc-prob))
+          "No terminals given and erc-prob less than 1.0.")
   (if (< (gen/double) erc-prob)
     (erc-gen)
     (gen/rand-nth terminals)))

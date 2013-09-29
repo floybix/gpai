@@ -26,19 +26,19 @@
     :nodes [{}
             {}
             {}
-            {:fn clojure.core/min, :in [2 1]}
+            {:fn clojure.core/min, :in [1 2]}
             {:fn nil, :in [], :value 6.38965609827303}
-            {:fn io.evolvability.gpai.lang-float/_mod_, :in [1 3]}
+            {:fn io.evolvability.gpai.lang-float/_mod_, :in [4 2]}
             {:fn nil, :in [], :value 5.79469347837637}
-            {:fn io.evolvability.gpai.lang-float/_-_, :in [6 7]}
-            {:fn io.evolvability.gpai.lang-float/_mod_, :in [5 3]}
+            {:fn io.evolvability.gpai.lang-float/_-_, :in [1 0]}
+            {:fn io.evolvability.gpai.lang-float/_mod_, :in [3 5]}
             {:fn nil, :in [], :value 5.035921772704431}
-            {:fn io.evolvability.gpai.lang-float/_-_, :in [8 8]}
-            {:fn io.evolvability.gpai.lang-float/_-_, :in [8 6]}
-            {:fn io.evolvability.gpai.lang-float/_-_, :in [5 6]}
-            {:fn io.evolvability.gpai.lang-float/_div_, :in [11 9]}
-            {:fn io.evolvability.gpai.lang-float/_-_, :in [4 4]}
-            {:fn io.evolvability.gpai.lang-float/_+_, :in [9 2]}],
+            {:fn io.evolvability.gpai.lang-float/_-_, :in [2 2]}
+            {:fn io.evolvability.gpai.lang-float/_-_, :in [3 5]}
+            {:fn io.evolvability.gpai.lang-float/_-_, :in [7 6]}
+            {:fn io.evolvability.gpai.lang-float/_div_, :in [2 4]}
+            {:fn io.evolvability.gpai.lang-float/_-_, :in [10 10]}
+            {:fn io.evolvability.gpai.lang-float/_+_, :in [6 13]}],
     :out-idx [14 15]})
 
 (def gm1-expr

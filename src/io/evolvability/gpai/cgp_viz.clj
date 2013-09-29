@@ -25,12 +25,13 @@
     (doseq [i active
             :when (>= i n-in)]
       (let [nd (nth nodes i)
-            in-idx (map (partial - i) (:in nd))
             nm (if (:fn nd) (name (:fn nd))
                    (prettyval (:value nd)))]
         (pr-node i nm)
-        (dorun (map pr-link in-idx (repeat i)
-                    (range (count in-idx))))))
+        (dorun (map pr-link
+                    (:in nd)
+                    (repeat i)
+                    (range (count (:in nd)))))))
     ;(println "out [label=\"output(s)\",shape=plaintext];")
     (println "node [shape=plaintext];")
     (dorun (map-indexed (fn [j i]

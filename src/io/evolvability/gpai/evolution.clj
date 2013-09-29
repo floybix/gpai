@@ -16,33 +16,69 @@
   [x fitness-val]
   (vary-meta x assoc ::fitness fitness-val))
 
-(defn regenerate-fn
+(defn tournaments-fn
   "Returns a regenerate function taking a fitness-evaluated population
-   and deriving the next generation population. This involves both
-   selection and variation. It applies the given operators:
+   and deriving the next generation population.
 
-   * first, the top :select-n individuals by fitness are selected,
-     i.e. the remainder are discarded.
-   * a number :elitism of highest-fitness individuals are preserved.
-   * mutate function is randomly applied to the selected individuals
-     to generate a proportion :mutation-prob of the next population.
-   * crossover function is randomly applied to pairs of the selected
-     individuals to generate the rest."
-  [mutate crossover
-   & {:keys [select-n elitism mutation-prob]
-      :or {select-n 3, elitism 1, mutation-prob 1.0}}]
+   In tournament selection, the population is filled by a series of
+   tournaments each with `size` randomly-selected contestants. The two
+   with highest fitness are passed through the `crossover` function
+   and then `mutate` to produce a new individual. Also, a number
+   `:elitism` of highest-fitness individuals are passed through
+   unchanged.
+
+   Individuals with equal fitness are selected between randomly. This
+   allows neutral mutations to accumulate over time.
+
+   For no crossover pass `crossover` as nil. For crossover with some
+   probability, test for it inside your `crossover` function."
+  [size mutate crossover
+   & {:keys [elitism] :or {elitism 0}}]
+  {:pre [(>= size 2) (>= elitism 0)]}
   (fn [xs]
     (let [n (count xs)
-          n-mutate (long (* (- n elitism) mutation-prob))
+          crossover (or crossover (fn [x _] x))
           ;; shuffle to avoid deterministic elitism with equal fitness
-          sortd (sort-by (comp - get-fitness) (gen/shuffle xs))
-          parents (take select-n sortd)
-          new-mutant #(mutate (gen/rand-nth parents))
-          new-child #(crossover (gen/rand-nth parents)
-                                (gen/rand-nth parents))]
-      (concat (take elitism parents)
-              (repeatedly n-mutate new-mutant)
-              (repeatedly (- n elitism n-mutate) new-child)))))
+          fitsort (fn [xs] (sort-by (comp - get-fitness) (gen/shuffle xs)))
+          new-child (fn [] (let [ps (-> (repeatedly size #(gen/rand-nth xs))
+                                       fitsort)]
+                            (-> (first ps)
+                                (crossover (second ps))
+                                (mutate))))]
+      (concat (take elitism (fitsort xs))
+              (repeatedly (- n elitism) new-child)))))
+
+(defn negative-selection-fn
+  "Returns a regenerate function taking a fitness-evaluated population
+   and deriving the next generation population.
+
+   In negative selection, the top `select-n` individuals by fitness
+   are selected, i.e. the remainder are discarded completely. The
+   population is filled by randomly choosing pairs of individuals,
+   applying the `crossover` operator and finally the `mutate`
+   operator. Also, a number `:elitism` of highest-fitness individuals
+   are passed through unchanged.
+
+   Individuals with equal fitness are selected between randomly. This
+   allows neutral mutations to accumulate over time.
+
+   For no crossover pass `crossover` as nil. For crossover with some
+   probability, test for it inside your `crossover` function."
+  [select-n mutate crossover
+   & {:keys [elitism] :or {elitism 0}}]
+  {:pre [(>= select-n 1) (>= elitism 0) (>= select-n elitism)]}
+  (fn [xs]
+    {:pre [(>= (count xs) select-n)]}
+    (let [n (count xs)
+          crossover (or crossover (fn [x _] x))
+          ;; shuffle to avoid deterministic elitism with equal fitness
+          fitsort (fn [xs] (sort-by (comp - get-fitness) (gen/shuffle xs)))
+          pool (take select-n (fitsort xs))
+          new-child #(-> (gen/rand-nth pool)
+                         (crossover (gen/rand-nth pool))
+                         (mutate))]
+      (concat (take elitism pool)
+              (repeatedly (- n elitism) new-child)))))
 
 (defn basic-distil
   "Takes a fitness-evaluated population collection and returns a map
