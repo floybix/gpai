@@ -6,9 +6,9 @@
 
 (defn print-active-nodes
   "Prints the graph of active nodes in DOT format."
-  [{:as gm :keys [nodes out-idx inputs]}]
+  [{:as gm :keys [nodes out-ids inputs]}]
   (let [n-in (count inputs)
-        active (sort (seq (cgp/active-idx gm)))
+        active (sort (seq (cgp/active-ids gm)))
         pr-node (fn [i nm]
                   (println (format "nd%d [label=\"%s\"];"
                                    i (str nm))))
@@ -24,7 +24,7 @@
     (dorun (map-indexed pr-in-node inputs))
     (doseq [i active
             :when (>= i n-in)]
-      (let [nd (nth nodes i)
+      (let [nd (get nodes i)
             nm (if (:fn nd) (name (:fn nd))
                    (prettyval (:value nd)))]
         (pr-node i nm)
@@ -37,7 +37,7 @@
     (dorun (map-indexed (fn [j i]
                           (-> (format "nd%d -> out%d [style=dashed];" i j)
                               println))
-                        out-idx))
+                        out-ids))
     (println "}")))
 
 (defn viz-active-nodes

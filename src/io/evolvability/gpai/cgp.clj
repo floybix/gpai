@@ -3,12 +3,12 @@
    i.e. Cartesian Genetic Programming with 1 row and no n-back limit.
    
    A genotype is a map of the form
-   `{:nodes [], :inputs [], :out-idx [], :lang [], :options {}}`.
+   `{:nodes [], :inputs [], :out-ids [], :lang [], :options {}}`.
 
-   The lengths of the `:inputs` and `:out-idx` vectors define the
+   The lengths of the `:inputs` and `:out-ids` vectors define the
    number of inputs and outputs, respectively. The `:inputs` vector
    contains the names of inputs (used for display only). The
-   `:out-idx` vector contains the node indices to use as outputs.
+   `:out-ids` vector contains the node indices to use as outputs.
 
    The `:lang` vector contains the available functions and constants.
    Each element must itself be a vector with:
@@ -66,11 +66,11 @@
   true)
 
 (defn genome
-  [inputs nodes out-idx lang options]
+  [inputs nodes out-ids lang options]
   (validate-lang! lang)
   (let [gm {:inputs (vec inputs)
             :nodes (vec nodes)
-            :out-idx (vec out-idx)
+            :out-ids (vec out-ids)
             :lang (vec lang)
             :options options}]
     (recache gm)))
@@ -108,22 +108,22 @@
   (let [n-in (count inputs)
         in-nodes (repeat n-in {})
         fn-nodes (map #(rand-node % lang options) (range n-in size))
-        out-idx (repeatedly n-out #(gen/rand-nth (range n-in size)))]
-    (genome inputs (concat in-nodes fn-nodes) out-idx lang options)))
+        out-ids (repeatedly n-out #(gen/rand-nth (range n-in size)))]
+    (genome inputs (concat in-nodes fn-nodes) out-ids lang options)))
 
-(defn active-idx
+(defn active-ids
   "Returns the set of indices corresponding to active nodes, i.e.
    those that the current output genes depend on."
-  [{:keys [nodes out-idx inputs]}]
-  (loop [act (set out-idx)
-         more (set out-idx)]
+  [{:keys [nodes out-ids inputs]}]
+  (loop [act (set out-ids)
+         more (set out-ids)]
     (if-let [i (first more)]
       (if (>= i (count inputs))
         ;; function node
-        (let [nd (nth nodes i)
-              in-idx (:in nd)]
-          (recur (into act in-idx)
-                 (into (disj more i) in-idx)))
+        (let [nd (get nodes i)
+              in-ids (:in nd)]
+          (recur (into act in-ids)
+                 (into (disj more i) in-ids)))
         ;; input node
         (recur act (disj more i)))
       ;; done
@@ -132,13 +132,13 @@
 (defn genome->expr
   "Converts a genome into a quoted function expression.
    This is like a macro, but at runtime."
-  [{:as gm :keys [nodes out-idx inputs options]}]
+  [{:as gm :keys [nodes out-ids inputs options]}]
   (let [data-type (:data-type options nil)
         size (count nodes)
         n-in (count inputs)
-        active (sort (seq (active-idx gm)))
-        syms (mapv #(symbol (str "nd-" % "_")) (range size))
-        args (subvec syms 0 n-in)
+        active (sort (seq (active-ids gm)))
+        ndsym (fn [id] (symbol (str "nd-" id "_")))
+        args (mapv ndsym (range n-in))
         ;; can do primitive declarations on up to 4 args (clojure limit)
         prim-args? (and data-type (<= (count args) 4))
         args (if prim-args?
@@ -151,15 +151,15 @@
         lets (loop [lets (vec init-lets)
                     more (drop-while #(< % n-in) active)]
                (if-let [i (first more)]
-                 (let [nd (nth nodes i)
+                 (let [nd (get nodes i)
                        form (if-let [f (:fn nd)]
-                              (list* f (map (partial nth syms) (:in nd)))
+                              (list* f (map ndsym (:in nd)))
                               (:value nd))]
-                   (recur (into lets [(nth syms i) form])
+                   (recur (into lets [(ndsym i) form])
                           (next more)))
                  ;; done
                  lets))
-        outs (mapv (partial nth syms) out-idx)]
+        outs (mapv ndsym out-ids)]
     `(fn ~args (let ~lets ~outs))))
 
 (defn- unchecked-eval
@@ -210,7 +210,7 @@
   "Mutates each 'gene' (including function gene and input genes at each
    node) and output index with probability :gene-mut-rate (an option
    key), defaulting to 0.03. Other options are passed to `rand-node`."
-  [{:as gm :keys [nodes out-idx inputs lang options]}]
+  [{:as gm :keys [nodes out-ids inputs lang options]}]
   (let [gene-mut-rate (or (:gene-mut-rate options) 0.03)
         n-in (count inputs)
         nds (loop [i n-in
@@ -218,7 +218,7 @@
               (if (< i (count nodes))
                 (if (< (gen/double) gene-mut-rate)
                   ;; mutate function
-                  (let [nnd (mutate-function-gene (nth nds i) i lang options)]
+                  (let [nnd (mutate-function-gene (get nds i) i lang options)]
                     (recur (inc i) (assoc nds i nnd)))
                   ;; otherwise, possibly mutate input links
                   (let [in (get-in nds [i :in])
@@ -235,6 +235,6 @@
                    (if (< (gen/double) gene-mut-rate)
                      (gen/rand-nth (range n-in (count nodes))) ;; exclude inputs
                      i))
-                 out-idx)]
-    (-> (assoc gm :nodes nds :out-idx oi)
+                 out-ids)]
+    (-> (assoc gm :nodes nds :out-ids oi)
         recache)))

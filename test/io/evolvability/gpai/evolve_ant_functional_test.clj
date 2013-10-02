@@ -21,16 +21,6 @@
         sa (if turning? nofood-count 0)]
     [act sa state-b]))
 
-(defn print-genome-atrophication
-  [gm]
-  (println "timestep:" (::icgp/timestep (meta gm)))
-  (println "nodes [i last-use]:")
-  (println (keep-indexed (fn [i x] (when x [i
-                                           (::icgp/last-use (meta x))]))
-                         (:nodes gm)))
-  (println "active:")
-  (println (sort (icgp/active-idx gm))))
-
 (defn evolve-functional-ant
   [n-gens]
   (let [lang (vec (concat ant-f/lang-actions
@@ -44,10 +34,9 @@
                   (let [f (icgp/function gm)]
                     (-> (ant-f/run-ant f food loc dir)
                         (ant-f/fitness))))
-        regen (comp (evo/negative-selection-fn 1 icgp/mutate-out-idx nil
+        regen (comp (evo/negative-selection-fn 1 icgp/mutate-out-ids nil
                                                :elitism 1)
-                    #(map icgp/add-rand-node %)
-                    #(map icgp/atrophy-lru %)
+                    #(map icgp/vary-neutral % (repeat 200))
                     #(map icgp/tick %))
         init-popn (repeatedly 5 #(icgp/rand-genome ant-f/inputs
                                                    ant-f/constants
@@ -61,7 +50,10 @@
                         :progress! (fn [i xs _]
                                      (let [sortd (sort-by evo/get-fitness-0 xs)
                                            gm (last sortd)]
-                                       (print-genome-atrophication gm)
+                                       (println i)
+                                       (println "Genome expression:")
+                                       (binding [pp/*print-suppress-namespaces* true]
+                                         (pp/pprint (icgp/out-exprs gm)))
                                        (println i "fitness" (double (evo/get-fitness gm)))
                                        (flush)))
                         :progress-every 100})))

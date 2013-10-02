@@ -14,7 +14,7 @@
         (is (= 16 (count (:nodes gm))) "Size of genome as given")))
     (testing "Calculation of active nodes"
       (let [gm (rand-genome inm 16 2 lang {})]
-        (is (every? number? (active-idx gm)) "Active list contains numbers")
+        (is (every? number? (active-ids gm)) "Active list contains numbers")
         (is (re-seq #" -> " (with-out-str (cgp-viz/print-active-nodes gm)))
             "Print active nodes in directed dot format")))
     (testing "Modify genomes"
@@ -39,7 +39,7 @@
             {:fn io.evolvability.gpai.lang-float/_div_, :in [2 4]}
             {:fn io.evolvability.gpai.lang-float/_-_, :in [10 10]}
             {:fn io.evolvability.gpai.lang-float/_+_, :in [6 13]}],
-    :out-idx [14 15]})
+    :out-ids [14 15]})
 
 (def gm1-expr
   '(clojure.core/fn

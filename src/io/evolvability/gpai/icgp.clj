@@ -10,13 +10,13 @@
    multiple data types.
 
    A genotype is a map of the form
-   `{:nodes [], :inputs [], out-types [], :out-idx [],
+   `{:nodes {}, :inputs [], out-types [], :out-ids [],
      :lang [], :options {}}`.
 
-   The lengths of the `:inputs` and `:out-idx` vectors define the
+   The lengths of the `:inputs` and `:out-ids` vectors define the
    number of inputs and outputs, respectively. The `:inputs` vector
    contains `[name type]` forms (the names are used for display only).
-   The `:out-idx` vector contains the node indices to use as outputs.
+   The `:out-ids` vector contains the node keys to use as outputs.
    The types specified for each output are stored in `:out-types`.
 
    The `:lang` vector contains the available functions and macros.
@@ -26,41 +26,35 @@
    Types can be anything that works with `isa?`, i.e. classes, symbols
    or keywords.
 
-   Each node is a map like
-   `{:fn 'foo, :in [1 4 1 ...], :type 'type, :arg-types '()}`
+   Nodes are stored in a map keyed by globally unique ids. Each node
+   is itself a map like
+     `{:fn 'foo, :in [1 4 1 ...], :type 'type}`
+   where
 
-   where :fn gives the node function as a namespaced symbol; the :in
-   vector gives pointers to fn arguments as node indices. The number
-   of inputs must equal the arity of the node function, and the types
-   of the input nodes must derive from the declared argument types.
+   * `:fn` gives the node function as a namespaced symbol. For
+     constant nodes this is nil and instead a `:value` is stored.
+   * the `:in` vector gives pointers to fn arguments as node keys. The
+     number of inputs must equal the arity of the node function, and
+     the types of the input nodes must derive from the argument types
+     declared in the genome language (kept in a node as `:arg-types`).
+   * `:type` gives the type of the node value.
 
-   Some nodes may represent constants. These nodes have no `:fn` or
-   `:in` and instead store a `:value` and a `:type`. The leading nodes
-   are for inputs and have a similar structure to constant nodes.
+   The leading nodes are for inputs and have `:fn` nil.
 
    The `:options` map can hold parameters passed on to generation
    functions:
 
-   * `:gene-mut-rate` point mutation probability for each
-     output index (default 0.15).
-   * `:grow-nodes` number of nodes added by the `mutate`
-     function (default 2).
    * `:erc-prob` point probability of generating an Ephemeral Random
      Constant (ERC) as opposed to a language element (default 0.0).
    * `:erc-gen` a function of no arguments to generate an ERC together
      with its type (default `#(vector (* (gen/double) 10.0) Number)`).
 
    A continuously growing genome obviously will suffer from bloating
-   problems. This is managed by letting the least-recently-used nodes
-   atrophy. Each node stores the number of generations in which it was
-   active. Nodes unused for option `:atrophy-steps` are set to nil. To
+   problems. This is managed by discarding unused nodes. To
    participate in this mechanism, update genomes with `tick` every
    generation."
   (:require [clojure.data.generators :as gen]
-            [io.evolvability.gpai.cgp :as cgp]))
-
-(def default-atrophy-steps 200)
-(def const-atrophy-steps Long/MAX_VALUE)
+            [clojure.set :as set]))
 
 (defn type? [x]
   (or (class? x) (symbol? x) (keyword? x)))
@@ -78,62 +72,74 @@
       (assert (type? ty))))
   true)
 
+(def node-id-counter (atom 0))
+
 (defn node
   [map last-use]
-  (with-meta map
-    {::last-use last-use}))
+  (let [id (swap! node-id-counter inc')]
+    [id (with-meta map
+          {::last-use last-use})]))
 
 (defn const-node
-  "Returns a new constant node."
-  [[value type]]
-  (node {:value value
-         :type type} const-atrophy-steps))
+  "Returns a new constant or input node."
+  ([[value type]]
+     (const-node [value type] 0))
+  ([[value type] t]
+     (node {:value value
+            :type type} t)))
+
+(defn add-node
+  "Adds a node to the genome with given globally unique id. The node
+   may reference existing nodes. This does not alter the genome output
+   because out-ids is unchanged."
+  [gm [id node]]
+  (let [act (-> (mapcat (fn [id]
+                          (get-in gm [:nodes id :activates]))
+                        (:in node))
+                (set)
+                (conj id))]
+    (update-in gm [:nodes] assoc id
+               (assoc node :activates act))))
 
 (defn empty-genome
   "Returns a genome consisting only of input nodes. It is not usable
-   initially because the `:out-idx` values are nil. After more nodes
-   are added, use `init-out-idx` to set them."
+   initially because the `:out-ids` values are nil. After more nodes
+   are added, use `init-out-ids` to set them."
   [inputs out-types lang options]
   (validate-lang! lang)
   (let [in-nodes (map (fn [[nm typ]]
-                        (const-node [(symbol nm) typ]))
-                      inputs)]
-    (with-meta
-      {:inputs (vec inputs)
-       :nodes (vec in-nodes)
-       :out-idx (vec (repeat (count out-types) nil))
-       :out-types (vec out-types)
-       :lang (vec lang)
-       :options options}
-      {::timestep 0})))
+                        (const-node [(symbol nm) typ] 0))
+                      inputs)
+        gm0 (with-meta
+              {:inputs (vec inputs)
+               :in-ids (mapv first in-nodes)
+               :nodes (sorted-map)
+               :out-ids (vec (repeat (count out-types) nil))
+               :out-types (vec out-types)
+               :lang (vec lang)
+               :options options}
+              {::timestep 0})]
+    (reduce add-node gm0 in-nodes)))
 
 (defn rand-typed-link
-  "Returns the index of a node compatible with `type`; nil is returned
-   if none are compatible. Argument `min-lu` limits linked nodes by a
-   minimum last-use time, which defines the minimum lifetime before
-   the new node can atrophy."
-  ([nodes type]
-     (rand-typed-link nodes 0 type))
-  ([nodes min-lu type]
-     (let [ok (keep-indexed (fn [i x]
-                              (when (and x (isa? (:type x) type)
-                                         (>= (::last-use (meta x)) min-lu))
-                                i))
-                            nodes)]
-       (when (seq ok)
-         (gen/rand-nth ok)))))
+  "Returns the [key value] of a node compatible with `type`; nil is
+   returned if none are compatible."
+  [nodes type]
+  (let [ok (filter (fn [[k nd]]
+                     (isa? (:type nd) type))
+                   nodes)]
+    (when (seq ok)
+      (gen/rand-nth ok))))
 
 (defn rand-node
   "Returns a new random node for the end of the genome. Functions are
    chosen from lang, or ERCs are generated according to `:erc-prob` by
    calling `:erc-gen`."
   [{:as gm :keys [nodes lang options]}]
-  (let [t (::timestep (meta gm) 0)
-        {:keys [erc-prob erc-gen atrophy-steps]
-         :or {atrophy-steps default-atrophy-steps
-              erc-prob 0.0
-              erc-gen #(vector (* (gen/double) 10.0) Number)}} options
-        min-lu (- t (quot atrophy-steps 2))]
+  (let [t (::timestep (meta gm))
+        {:keys [erc-prob erc-gen]
+         :or {erc-prob 0.0
+              erc-gen #(vector (* (gen/double) 10.0) Number)}} options]
     (if (< (gen/double) erc-prob)
       (let [[v ty] (erc-gen)]
         (node {:value v :type ty} t))
@@ -141,78 +147,56 @@
         (when (empty? sl)
           (throw (Exception. "No functions work with existing node types.")))
         (let [[x [rty & tys]] (first sl)
-              links (map (partial rand-typed-link nodes min-lu) tys)]
+              links (map (partial rand-typed-link nodes) tys)]
           (if (some nil? links)
             (recur (next sl))
-            ;; new node must atrophy when any dependencies do (or before)
-            (let [lu (if (seq links)
-                       (apply min t (map (comp ::last-use meta #(nth nodes %))
-                                         links))
-                       t)]
-              (node {:fn x
-                     :in (vec links)
-                     :type rty
-                     :arg-types tys} lu))))))))
-
-(defn add-node
-  "Appends a node the genome. The node should have been generated with
-   reference to the existing nodes. This does not alter the genome
-   output because out-idx is unchanged."
-  [gm node]
-  (update-in gm [:nodes] conj node))
+            (node {:fn x
+                   :in (mapv first links)
+                   :type rty
+                   :arg-types tys} t)))))))
 
 (defn add-rand-node
   [gm]
   (add-node gm (rand-node gm)))
 
-(defn active-idx
-  "Returns the set of indices corresponding to active nodes, i.e.
-   those that the current outputs depend on."
-  [{:as gm :keys [nodes out-idx]}]
-  (loop [act (set out-idx)
-         more (set out-idx)]
-    (if-let [i (first more)]
-      (let [nd (nth nodes i)
-            in (:in nd)]
-        (if in
-          (recur (into act in)
-                 (into (disj more i) in))
-          (recur act (disj more i))))
-      ;; done
-      act)))
+(defn active-ids
+  "Returns the set of node keys for the active nodes, i.e. those that
+   the current outputs depend on."
+  [{:as gm :keys [nodes out-ids]}]
+  (apply set/union
+         (map (fn [id]
+                (:activates (get nodes id)))
+              out-ids)))
 
 (defn node-expr
-  "Returns the expression for node at idx."
-  [gm idx]
-  (let [act (sort (seq (active-idx (assoc gm :out-idx [idx]))))
+  "Returns the expression for node at key `id`."
+  [gm id]
+  (let [act (sort (seq (active-ids (assoc gm :out-ids [id]))))
         xnds (loop [nds (:nodes gm)
                     more act]
                (if-let [i (first more)]
-                 (let [nd (nth nds i)
+                 (let [nd (get nds i)
                        ex (if-let [f (:fn nd)]
-                            (list* f (map #(:expr (nth nds %))
+                            (list* f (map #(:expr (get nds %))
                                           (:in nd)))
                             (:value nd))]
                    (recur (assoc-in nds [i :expr] ex) (rest more)))
                  nds))]
-    (:expr (nth xnds idx))))
+    (:expr (get xnds id))))
 
 (defn out-exprs
   "Returns a sequence of expressions for the output nodes."
   [gm]
-  (map (partial node-expr gm) (:out-idx gm)))
+  (map (partial node-expr gm) (:out-ids gm)))
 
 (defn genome->expr
   "Converts a genome into a quoted function expression.
    This is like a macro, but at runtime."
-  [{:as gm :keys [nodes out-idx inputs options]}]
-  (let [;data-type (:data-type options nil)
-        size (count nodes)
-        n-in (count inputs)
-        in-types (map second inputs)
-        active (sort (seq (active-idx gm)))
-        syms (mapv #(symbol (str "nd-" % "_")) (range size))
-        args (subvec syms 0 n-in)
+  [{:as gm :keys [nodes in-ids out-ids inputs options]}]
+  (let [in-types (map second inputs)
+        active (active-ids gm)
+        ndsym (fn [id] (symbol (str "nd-" id "_")))
+        args (mapv ndsym in-ids)
         ;; do primitive casts on inputs: (long x) or (double x)
         init-lets (mapcat (fn [s ty]
                             (let [x (case ty
@@ -222,17 +206,17 @@
                               (list s x)))
                           args in-types)
         lets (loop [lets (vec init-lets)
-                    more (drop-while #(< % n-in) active)]
-               (if-let [i (first more)]
-                 (let [nd (nth nodes i)
+                    more (sort (set/difference active (set in-ids)))]
+               (if-let [id (first more)]
+                 (let [nd (get nodes id)
                        form (if-let [f (:fn nd)]
-                              (list* f (map (partial nth syms) (:in nd)))
+                              (list* f (map ndsym (:in nd)))
                               (:value nd))]
-                   (recur (into lets [(nth syms i) form])
+                   (recur (into lets [(ndsym id) form])
                           (next more)))
                  ;; done
                  lets))
-        outs (mapv (partial nth syms) out-idx)]
+        outs (mapv ndsym out-ids)]
     `(fn ~args (let ~lets ~outs))))
 
 (defn- unchecked-eval
@@ -246,15 +230,15 @@
    delayed evaluation to compile a new one. The set of output nodes is
    compared to the cached one to see whether recompilation is
    necessary. Option `:force-recache` overrides the check."
-  [{:as gm :keys [out-idx options]}]
+  [{:as gm :keys [out-ids options]}]
   (if (and (not (:force-recache options))
            (::function (meta gm))
-           (= out-idx (::cached-out-idx (meta gm))))
+           (= out-ids (::cached-out-ids (meta gm))))
     gm
     ;; else - need to recompile
     (vary-meta gm assoc
                ::function (delay (unchecked-eval (genome->expr gm)))
-               ::cached-out-idx out-idx)))
+               ::cached-out-ids out-ids)))
 
 (defn function
   "Returns the (cached) function corresponding to the genome."
@@ -263,37 +247,30 @@
     (force cached-f)
     (recur (recache gm))))
 
-(defn atrophy-lru
-  "Remove the least recently used node."
-  [gm]
-  (let [t (::timestep (meta gm))
-        nodes (:nodes gm)
-        lu (fn [i] (::last-use (meta (nth nodes i))
-                              Long/MAX_VALUE))
-        min-i (apply min-key lu (range (count nodes)))]
-    (if (< (lu min-i) t)
-      (update-in gm [:nodes] assoc min-i nil)
-      gm)))
+(defn dependent-nodes
+  "Returns the keys of all nodes which depend on node i, including i."
+  [gm id]
+  (let [nodes (:nodes gm)]
+    (set (map key (filter (fn [[k nd]]
+                            (contains? (:activates nd) id))
+                          (subseq nodes >= id))))))
 
-(defn- atrophy
-  "Nullify any nodes that have not been used within a time span of
-   option `:atrophy-steps` time steps."
+(defn discard-node
+  "Remove a randomly chosen node and any other nodes which depend on it."
   [gm]
-  (let [crit (:atrophy-steps (:options gm) default-atrophy-steps)
-        t (::timestep (meta gm))
-        t-crit (- t crit)]
-    (if (neg? t-crit)
-      gm
-      (let [nodes (mapv (fn [nd]
-                          (when (and nd (>= (::last-use (meta nd)) t-crit)) nd))
-                        (:nodes gm))]
-        (assoc gm :nodes nodes)))))
+  (let [all (set (keys (:nodes gm)))
+        act (active-ids gm)
+        ins (set (:in-ids gm))
+        off (set/difference all act ins)
+        kill (gen/rand-nth (seq off))
+        kills (dependent-nodes gm kill)]
+    (update-in gm [:nodes] (fn [nds] (apply dissoc nds kills)))))
 
 (defn tick
   "Update the activity counters for active nodes and the age counter
    of the genome."
   [gm]
-  (let [act (active-idx gm)
+  (let [act (active-ids gm)
         t-1 (::timestep (meta gm))
         t (inc' t-1)
         nodes (reduce (fn [nds i]
@@ -303,24 +280,24 @@
     (-> (assoc gm :nodes nodes)
         (vary-meta assoc ::timestep t))))
 
-(defn mutate-out-idx
+(defn mutate-out-ids
   "Choose one of the outputs and point it to a randomly selected node
    of a compatible type."
   ([gm]
-     (let [j (gen/rand-nth (range (count (:out-idx gm))))]
-       (mutate-out-idx gm j)))
+     (let [j (gen/rand-nth (range (count (:out-ids gm))))]
+       (mutate-out-ids gm j)))
   ([{:as gm :keys [nodes out-types]} j]
      (let [type (nth out-types j)
-           new-o (rand-typed-link nodes type)]
-       (when (nil? new-o)
+           [oid _] (rand-typed-link nodes type)]
+       (when (nil? oid)
          (throw (Exception. (str "Could not find a node of out type "
                                  type))))
-       (-> (update-in gm [:out-idx] assoc j new-o)
+       (-> (update-in gm [:out-ids] assoc j oid)
            (recache)))))
 
-(defn init-out-idx
+(defn init-out-ids
   [gm]
-  (reduce mutate-out-idx gm (range (count (:out-idx gm)))))
+  (reduce mutate-out-ids gm (range (count (:out-ids gm)))))
 
 (defn rand-genome
   "Generates a new genome with the given `inputs` and `constants`,
@@ -332,5 +309,13 @@
                      (map const-node constants))]
     (-> (iterate add-rand-node gm-1)
         (nth n-rand)
-        (init-out-idx)
+        (init-out-ids)
         (recache))))
+
+(defn vary-neutral
+  "Vary the currently inactive parts of the genome by either adding or
+   discarding nodes depending on the `target-size` (number of nodes)."
+  [gm target-size]
+  (if (> (count (:nodes gm)) target-size)
+    (discard-node gm)
+    (add-rand-node gm)))

@@ -49,6 +49,7 @@
    [`_dmod_ [Double, Double Double]]
    [`min [Double, Double Double]]
    [`max [Double, Double Double]]
+   [`if< [Double, Double Double Double Double]]
    [`< [Boolean, Double Double]]
    [`if [Double, Boolean Double Double]]])
 
@@ -57,6 +58,10 @@
    avoid autoboxing."
   [x]
   `(if (pos? ~x) ~x (- ~x)))
+
+(defmacro if<
+  [x y a b]
+  `(if (< ~x ~y) ~a ~b))
 
 (defn _quot_
   "quot, returns 1 if y is zero."
