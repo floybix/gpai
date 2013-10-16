@@ -1,13 +1,21 @@
 # TODO
 
 
+* protocol for evolvable genomes (cgp, icgp, tree)
+  * mutate
+  * crossover / fuse
+  * active-ids
+  * genome->expr
+    * function
+  * expression (simplify)
+
 
 ## methods
 
 * icgp
-  * currently performs worse than cgp.
-    * sub-expressions persist for 1000s of generations. needs disruption to accreted trees?
   * globally unique ids: allows merging genomes!
+  * generate input and constant nodes once, shared across popn
+    * constant nodes should not be mutated
 
 * ecgp
 
@@ -24,6 +32,7 @@
 
 * cgp consistency with icgp
   * node last-used accounting?
+  * constants
 
 * pre / post / assertions
 

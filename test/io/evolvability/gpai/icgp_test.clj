@@ -19,12 +19,15 @@
         (is (every? number? (active-ids gm)) "Active list is numbers")
         (is (re-seq #" -> " (with-out-str (cgp-viz/print-active-nodes gm)))
             "Print active nodes in directed dot format")
-        (is (= 20 (count (:nodes (-> (mutate-out-ids gm)
-                                     tick))))
-            "Nodes remain after out-mutation & tick")
+        (is (= 20 (count (:nodes (mutate gm))))
+            "Number of nodes unchanged after mutation")
+        (is (not= (:nodes gm)
+                  (:nodes (mutate (assoc-in gm [:options :node-mut-rate] 0.2))))
+            "Mutation changes genome")
         (is (= 22 (count (:nodes (-> gm add-rand-node add-rand-node))))
             "Adding random nodes increases length")))
     (testing "Genome compiler"
-      (let [gm (rand-genome ins consts outs lang 16 {})]
+      (let [gm (-> (rand-genome ins consts outs lang 16 {})
+                   mutate)]
         (is (seq (genome->expr gm)))
         (is (not (nil? (function gm))))))))

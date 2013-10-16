@@ -168,16 +168,9 @@
   [expr]
   (binding [*unchecked-math* true] (eval expr)))
 
-(defn function
-  "Returns the (cached) function corresponding to the genome."
-  [gm]
-  (if-let [cached-f (::function (meta gm))]
-    (force cached-f)
-    (recur (recache gm))))
-
 (defn recache
   "Checks if a cached function is invalid, and if necessary, sets up a
-   delayed evaluation to compile a new one. Tthe genome's evaluation
+   delayed evaluation to compile a new one. The genome's evaluation
    expression (using active nodes) is compared to the cached one to
    see whether recompilation is necessary. Option `:force-recache`
    overrides the check."
@@ -189,8 +182,15 @@
       gm
       ;; else - need to recompile
       (vary-meta gm assoc
-                 ::function (unchecked-eval expr)
+                 ::function (delay (unchecked-eval expr))
                  ::expr expr))))
+
+(defn function
+  "Returns the (cached) function corresponding to the genome."
+  [gm]
+  (if-let [cached-f (::function (meta gm))]
+    (force cached-f)
+    (recur (recache gm))))
 
 (defn- mutate-function-gene
   "Chooses a new function for node `nd` at offset `i`. Reuses existing
@@ -224,9 +224,9 @@
                   (let [in (get-in nds [i :in])
                         m?s (repeatedly (count in) #(< (gen/double) gene-mut-rate))]
                     (if (some true? m?s)
-                      (let [nin (mapv (fn [m? x] (if m? (rand-link i) x))
-                                      m?s in)]
-                        (recur (inc i) (assoc-in nds [i :in] nin)))
+                      (let [newin (mapv (fn [m? x] (if m? (rand-link i) x))
+                                        m?s in)]
+                        (recur (inc i) (assoc-in nds [i :in] newin)))
                       ;; no mutations to this node
                       (recur (inc i) nds))))
                 ;; done

@@ -14,7 +14,7 @@
           ins circle/inputs
           opts {:erc-prob 0.25
                 :erc-gen #(* (gen/double) 5.0)}
-          inputs (circle/grid-inputs 4 (range 1 5))
+          inputs (circle/grid-inputs 4 [1 2 3 4])
           fitness (fn [gm]
                     ;; take a positive number as classified "true"
                     (let [f (comp pos? (tree/function gm))]
@@ -40,7 +40,7 @@
       ;; print out grid of hits/misses
       (let [gm (:best (last (:history soln)))
             f (comp pos? (tree/function gm))]
-        (circle/print-solution 4 [1 2.5 3.5] f)
+        (circle/print-solution 4 [1 2 3 4] f)
         (println "Genome expression:")
         (binding [pp/*print-suppress-namespaces* true]
           (pp/pprint (tree/genome->expr gm)))))))
