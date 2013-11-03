@@ -1,5 +1,7 @@
 # TODO
 
+* lang as 3-tuples [symbol return-type [arg-types]]
+  * possible extension with weighting?
 
 * protocol for evolvable genomes (cgp, icgp, tree)
   * mutate
@@ -9,30 +11,7 @@
     * function
   * expression (simplify)
 
-
-## methods
-
-* icgp
-  * globally unique ids: allows merging genomes!
-  * generate input and constant nodes once, shared across popn
-    * constant nodes should not be mutated
-
-* ecgp
-
-* cgp ~crossover/merge by swallowing other genome as a function codebase?
-  * or adopt dominant strategies as global function codebases
-  * automatically defined _closures_ (override some args only)
-
-* island populations
-
-* mutation or optimisation to adjust numeric constants
-
-
-## misc
-
-* cgp consistency with icgp
-  * node last-used accounting?
-  * constants
+* impl/ vs api namespaces
 
 * pre / post / assertions
 
@@ -40,9 +19,32 @@
   * specify rules for language sets
 
 
+## methods
+
+* icgp
+  * fuse / crossover (merge nodes, crossover out-ids)
+    * then discard neutral nodes to return to target genome size
+  * perf
+    * primitive ops
+
+* ecgp
+
+* cgp
+  * consistency with icgp
+    * node last-used accounting?
+    * constants
+  * adopt dominant strategies as global function codebases?
+  * automatically defined _closures_ (override some args only)
+
+* island populations
+
+* mutation or optimisation to adjust numeric constants
+
+
 ## problems
 
 * santa fe trail ant
+  * memoize fitness
 
 * random number generators
   * visualise evolution progress

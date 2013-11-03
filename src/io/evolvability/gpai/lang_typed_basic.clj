@@ -8,7 +8,7 @@
 
 (def lang-long
   "Operators for integer (long) data. Supports arbitrary precision."
-  [[`abs [Long, Long]]
+  [[`abs' [Long, Long]]
    [`inc' [Long, Long]]
    [`+' [Long, Long Long]]
    [`-' [Long, Long Long]]
@@ -23,7 +23,7 @@
 
 (def lang-long-prim
   "Operators for primitive integer (long) data. If used with strictly
-   primitive longs (and if compiled with unchecked math), will allow
+   primitive longs (and compiled with unchecked math), will allow
    overflows silently. Otherwise throws ArithmeticException."
   [[`abs [Long, Long]]
    [`inc [Long, Long]]
@@ -58,6 +58,12 @@
    avoid autoboxing."
   [x]
   `(if (pos? ~x) ~x (- ~x)))
+
+(defmacro abs'
+  "Absolute value of a number, auto-promoting.
+   Because (- Long/MIN_VALUE) overflows."
+  [x]
+  `(if (pos? ~x) ~x (-' ~x)))
 
 (defmacro if<
   [x y a b]

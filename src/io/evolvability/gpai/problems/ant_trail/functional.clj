@@ -59,6 +59,14 @@
    [3 Long]
    [4 Long]])
 
+(defn limit-magn
+  "Truncate an integer to range of Long, avoiding crazy arbitrarily
+   large integers (I hit one with 2 million decimal digits)."
+  [i]
+  (min Long/MAX_VALUE
+       (max Long/MIN_VALUE
+            i)))
+
 (defn ant-step
   "Computes one step of an ant program given a state map and returns a
    modified state map."
@@ -97,7 +105,7 @@
       :actions (inc actions)
       :action what
       :food-ahead? food-ahead?
-      :state-vals svals
+      :state-vals (map limit-magn svals)
       
       :prev-acts (cons what prev-acts)
       :prev-sens (cons food-ahead? prev-sens))))

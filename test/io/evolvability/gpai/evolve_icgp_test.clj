@@ -7,14 +7,14 @@
             [clojure.data.generators :as gen]
             [clojure.pprint :as pp]))
 
-(defn handcoded-circle
+(defn a-handcoded-circle
   [r y x]
   (< (lang/abs (- x y))
      (inc r)))
 
-(comment
-  (circle/print-solution 4 [2 3 4] handcoded-circle)
-  )
+(deftest a-handcoded-circle-test
+  (testing "Hand-coded circle classifier function runs."
+   (circle/print-solution 4 [2 3 4] a-handcoded-circle)))
 
 (defn evolve-circle
   [n-gens]
@@ -26,22 +26,13 @@
               :erc-gen #(vector (* (gen/double) 5.0) Double)}
         incases (circle/grid-inputs 4 [1 2 3 4])
         fitness (fn [gm]
-                  (try
-                    (let [f (comp pos? first (icgp/function gm))]
-                      (circle/fitness-fn incases f))
-                    (catch Exception e
-                      (println e)
-                      (binding [*print-meta* true]
-                        (pp/pprint gm)
-                        (pp/pprint (icgp/genome->expr gm))
-                        (println "out-ids:" (:out-ids gm))
-                        (println "active:" (icgp/active-ids gm)))
-                      (throw e))))
+                  (let [f (comp pos? first (icgp/function gm))]
+                    (circle/fitness-fn incases f)))
         regen (evo/negative-selection-fn 1 icgp/mutate
                                          nil ;; no crossover
                                          :elitism 1)
-        init-popn (repeatedly 5 #(icgp/rand-genome inputs constants outputs
-                                                   lang 50 opts))]
+        init-popn (icgp/rand-genomes 5 inputs constants outputs
+                                     50 lang opts)]
     (evo/simple-evolve init-popn
                        fitness
                        regen

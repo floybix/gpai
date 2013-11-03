@@ -18,7 +18,11 @@
         pr-link (fn [i1 i2 j]
                   (println (format "nd%d -> nd%d [label=%d];"
                                    i1 i2 j)))
-        prettyval (fn [x] (if (float? x) (format "%.2f" x) (str x)))]
+        prettyval (fn [x]
+                    (cond
+                     (float? x) (format "%.2f" x)
+                     (keyword? x) (str ":" (name x))
+                     :else (str x)))]
     (println "digraph activenodes {")
     (println "ordering=out;")
     (dorun (map-indexed pr-in-node inputs))

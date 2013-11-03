@@ -11,8 +11,8 @@
              ["b" Long]
              ["c" Long]]
         outs [Long Long]]
-    (testing "Basic operations on random ICGP genomes."
-      (let [gm (rand-genome ins consts outs lang 16 {})]
+    (testing "Basic operations on random icgp genomes."
+      (let [gm (rand-genome ins consts outs 16 lang {})]
         (is (every? associative? (:nodes gm)) "Nodes are maps")
         (is (= 20 (count (:nodes gm)))
             "Size of genome as given (includes inputs and constants)")
@@ -27,7 +27,7 @@
         (is (= 22 (count (:nodes (-> gm add-rand-node add-rand-node))))
             "Adding random nodes increases length")))
     (testing "Genome compiler"
-      (let [gm (-> (rand-genome ins consts outs lang 16 {})
+      (let [gm (-> (rand-genome ins consts outs 16 lang {})
                    mutate)]
         (is (seq (genome->expr gm)))
         (is (not (nil? (function gm))))))))

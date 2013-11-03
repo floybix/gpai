@@ -11,19 +11,16 @@
    their nodes.
 
    This implementation has a type system. All functions, inputs and
-   data values are defined with a type. Functions also define the
-   types of their arguments. Types can be anything that works with
-   `isa?`, i.e. classes, symbols or keywords.
+   data values are declared with a type. Functions are also declared
+   with the types of their arguments. Types can be anything that works
+   with `isa?`, i.e. classes, symbols or keywords.
 
    A genotype is a map of the form
-   `{:nodes {}, :inputs [], out-types [], :out-ids [],
-     :lang [], :options {}}`.
+   `{:nodes {}, :in-ids [], :in-types [], :out-ids [], out-types [],
+     :const-ids [], :lang [], :options {}}`.
 
-   The lengths of the `:inputs` and `:out-ids` vectors define the
-   number of inputs and outputs, respectively. The `:inputs` vector
-   contains `[name type]` forms (the names are used for display only).
-   The `:out-ids` vector contains the node keys to use as outputs.
-   The types specified for each output are stored in `:out-types`.
+   The lengths of the `:in-ids` and `:out-ids` vectors define the
+   number of inputs and outputs, respectively.
 
    The `:lang` vector contains the available functions and macros.
    Each element must itself be a vector in the form
@@ -31,19 +28,19 @@
 
    Nodes are stored in a sorted map keyed by globally unique ids. A
    node may take inputs only from ids lower than its own. Each node is
-   itself a map like
-     `{:fn 'foo, :in [1 4 1 ...], :type 'type}`
+   itself a map with several optional keys; function nodes are like:
+     `{:fn 'foo, :in [1 4 1 ...], :type 'type, :arg-types [...]}`
    where
 
    * `:fn` gives the node function as a namespaced symbol. For
-     constant nodes this is nil and instead a `:value` is stored.
+     constant nodes this is omitted.
    * the `:in` vector gives pointers to fn arguments as node keys. The
      number of inputs must equal the arity of the node function, and
      the types of the input nodes must derive from the argument types
-     declared in the genome language (kept in a node as `:arg-types`).
+     declared in the genome language (and in a node as `:arg-types`).
    * `:type` gives the type of the node value.
-
-   The leading nodes are for inputs and have `:fn` nil.
+   * `:value` gives the value for constant nodes and a symbolic name
+     for input nodes.
 
    The `:options` map can hold parameters passed on to generation
    functions:
@@ -80,44 +77,50 @@
 
 (defn node
   [map last-use]
-  (let [id (new-node-id)]
-    [id (with-meta map
-          {::last-use last-use})]))
+  (with-meta map
+    {::last-use last-use}))
 
 (defn const-node
   "Returns a new constant or input node."
-  ([[value type]]
-     (const-node [value type] 0))
-  ([[value type] t]
+  ([value type]
+     (const-node value type 0))
+  ([value type t]
      (node {:value value
             :type type} t)))
 
 (defn add-node
-  "Adds a node to the genome with given globally unique id. The node
-   may reference existing nodes. This does not alter the genome output
-   because out-ids is unchanged."
-  [gm [id node]]
-  (assoc-in gm [:nodes id] node))
+  "Adds a node to the genome. If its id is not given a new unique id
+   is generated. The node may reference existing nodes. This does not
+   alter the genome output because out-ids is unchanged."
+  ([gm node]
+     (add-node gm (new-node-id) node))
+  ([gm id node]
+     (assoc-in gm [:nodes id] node)))
 
 (defn empty-genome
-  "Returns a genome consisting only of input nodes. It is not usable
-   initially because the `:out-ids` values are nil. After more nodes
-   are added, use `init-out-ids` to set them."
-  [inputs out-types lang options]
+  "Returns a genome consisting only of input and constant nodes. It is
+   not usable initially because the `:out-ids` values are nil. After
+   more nodes are added, use `init-out-ids` to set them."
+  [inputs constants out-types lang options]
   (validate-lang! lang)
-  (let [in-nodes (map (fn [[nm typ]]
-                        (const-node [(symbol nm) typ] 0))
-                      inputs)
-        gm0 (with-meta
-              {:inputs (vec inputs)
-               :in-ids (mapv first in-nodes)
-               :nodes (sorted-map)
-               :out-ids (vec (repeat (count out-types) nil))
-               :out-types (vec out-types)
-               :lang (vec lang)
-               :options options}
-              {::timestep 0})]
-    (reduce add-node gm0 in-nodes)))
+  (let [in-s (map (fn [[nm ty]]
+                    [(new-node-id)
+                     (const-node (symbol nm) ty)])
+                  inputs)
+        const-s (map (fn [[v ty]]
+                       [(new-node-id)
+                        (const-node v ty)])
+                     constants)]
+   (with-meta
+     {:in-ids (mapv first in-s)
+      :in-types (mapv (comp second :type) in-s)
+      :const-ids (mapv first const-s)
+      :nodes (into (sorted-map) (concat in-s const-s))
+      :out-ids (vec (repeat (count out-types) nil))
+      :out-types (vec out-types)
+      :lang (vec lang)
+      :options options}
+     {::timestep 0})))
 
 (defn rand-typed-link
   "Returns the key of a node compatible with `type`; nil is returned
@@ -159,15 +162,14 @@
 
 (defn add-rand-nodes
   [gm n]
-  (loop [gm gm
-         i n]
-    (if (zero? i) gm
-      (recur (add-rand-node gm) (dec i)))))
+  (reduce (fn [gm _]
+            (add-rand-node gm))
+          gm (range n)))
 
 (defn active-ids
   "Returns the set of node keys for the active nodes, i.e. those that
    the current outputs depend on."
-  [{:keys [nodes out-ids inputs]}]
+  [{:keys [nodes out-ids]}]
   (loop [act (set out-ids)
          more (set out-ids)]
     (if-let [id (first more)]
@@ -175,6 +177,7 @@
             in-ids (:in nd)
             ;; only add to search list those which we didn't already know
             new (set/difference (set in-ids) act)]
+        ;; TODO: remove for performance?
         (assert (every? #(< % id) in-ids)
                 (str "input from later id: " in-ids id))
         (recur (into act new)
@@ -206,9 +209,8 @@
 (defn genome->expr
   "Converts a genome into a quoted function expression.
    This is like a macro, but at runtime."
-  [{:as gm :keys [nodes in-ids out-ids inputs options]}]
-  (let [in-types (map second inputs)
-        active (active-ids gm)
+  [{:as gm :keys [nodes in-ids out-ids in-types options]}]
+  (let [active (active-ids gm)
         ndsym (fn [id] (symbol (str "nd-" id "_")))
         args (mapv ndsym in-ids)
         ;; do primitive casts on inputs: (long x) or (double x)
@@ -233,7 +235,7 @@
         outs (mapv ndsym out-ids)]
     `(fn ~args (let ~lets ~outs))))
 
-(defn- unchecked-eval
+(defn- unchecked-math-eval
   "Eval with unchecked math to ignore integer overflow (only works for
    primitive longs)."
   [expr]
@@ -251,7 +253,7 @@
     gm
     ;; else - need to recompile
     (vary-meta gm assoc
-               ::function (delay (unchecked-eval (genome->expr gm)))
+               ::function (delay (unchecked-math-eval (genome->expr gm)))
                ::cached-out-ids out-ids)))
 
 (defn function
@@ -262,7 +264,8 @@
     (recur (recache gm))))
 
 (defn child-nodes
-  "Returns the keys of all nodes which depend directly on node i, not including i."
+  "Returns the set of keys of all nodes which depend directly on node
+   i, not including i."
   [gm id]
   (let [nodes (:nodes gm)]
     (set (keep (fn [[k nd]]
@@ -270,17 +273,19 @@
                (subseq nodes > id)))))
 
 (defn dependent-nodes
-  "Returns the keys of all nodes which depend on node i, including i."
+  "Returns the set of keys of all nodes which depend on node i,
+   including i."
   [gm id]
-  (let [nodes (:nodes gm)]
-    (loop [ds #{id}
-           more (child-nodes gm id)]
-      (if-let [cid (first more)]
+  (loop [ds #{id}
+         more (child-nodes gm id)]
+    (if-let [cid (first more)]
+      ;; only add to search list those which we didn't already know
+      (let [new (set/difference (child-nodes gm cid) ds)]
         (recur (conj ds cid)
-               (-> (into more (child-nodes gm cid))
-                   (disj cid)))
-        ;; done
-        ds))))
+               (-> (into more new)
+                   (disj cid))))
+      ;; done
+      ds)))
 
 (defn discard-inactive
   "Remove a randomly chosen inactive node and any other nodes which
@@ -288,8 +293,8 @@
   [gm]
   (let [all (set (keys (:nodes gm)))
         act (active-ids gm)
-        ins (set (:in-ids gm))
-        off (set/difference all act ins)
+        fixed (set (concat (:in-ids gm) (:const-ids gm)))
+        off (set/difference all act fixed)
         kill (gen/rand-nth (seq off))
         kills (dependent-nodes gm kill)]
     (update-in gm [:nodes] (fn [nds] (apply dissoc nds kills)))))
@@ -310,7 +315,8 @@
 
 (defn mutate-out-id
   "Choose one of the outputs and point it to a randomly selected node
-   of a compatible type."
+   of a compatible type. Throws IllegalStateException if a compatible
+   node does not exist."
   ([gm]
      (let [j (gen/rand-nth (range (count (:out-ids gm))))]
        (mutate-out-id gm j)))
@@ -318,31 +324,39 @@
      (let [type (nth out-types j)
            oid (rand-typed-link nodes type)]
        (when (nil? oid)
-         (throw (Exception. (str "Could not find a node of out type "
-                                 type))))
+         (throw (IllegalStateException.
+                 (str "Could not find a node of out type " type))))
        (-> (update-in gm [:out-ids] assoc j oid)
            (recache)))))
 
 (defn init-out-ids
+  "Resets all out-ids to valid ids."
   [gm]
   (reduce mutate-out-id gm (range (count (:out-ids gm)))))
 
+(defn rand-genomes
+  "Generates a sequence of `n` random genomes sharing input and
+   constant nodes. Each has an additional `n-rand` number of random
+   nodes, and with outputs of the number and types given."
+  [n inputs constants out-types n-rand lang options]
+  (let [gm-0 (empty-genome inputs constants out-types lang options)]
+    (repeatedly n #(-> gm-0
+                       (add-rand-nodes n-rand)
+                       (init-out-ids)
+                       (recache)))))
+
 (defn rand-genome
-  "Generates a new genome with the given `inputs` and `constants`,
+  "Generates a random genome with the given `inputs` and `constants`,
    plus an initial `n-rand` number of random nodes, and with outputs
    of the number and types given."
-  [inputs constants out-types lang n-rand options]
-  (let [gm-0 (empty-genome inputs out-types lang options)]
-    (-> (reduce add-node gm-0
-                (map const-node constants))
-        (add-rand-nodes n-rand)
-        (init-out-ids)
-        (recache))))
+  [inputs constants out-types n-rand lang options]
+  (first (rand-genomes 1 inputs constants out-types n-rand lang options)))
 
 (defn links-based-on
   "Returns a vector of ids consistent with `types`, reusing the old
-   vector of ids `oids` having types `otypes`. Returns nil if a link
-   of a required type can not be found."
+   vector of ids `oids` having types `otypes`, and filling in the rest
+   with random type-compatible ids. Returns nil if a link of a
+   required type can not be found."
   [nodes types otypes oids]
   (let [id->ty (zipmap oids otypes)
         ty->ids (group-by id->ty oids)]
@@ -361,7 +375,8 @@
                   (update-in tym [ty] rest))))))))
 
 (defn- replace-links
-  "Remap links from `old-id` to `new-id` in the `:in` vectors of `ids`."
+  "Replace `old-id` with `new-id` in the `:in` vectors of nodes with
+   given `ids`."
   [gm old-id new-id ids]
   (reduce (fn [gm id]
             (update-in gm [:nodes id :in] (partial replace {old-id new-id})))
@@ -376,7 +391,7 @@
   [gm oid [id nd] adopt-id]
   (let [cids (child-nodes gm oid)]
     (-> gm
-        (add-node [id nd])
+        (add-node id nd)
         (replace-links oid adopt-id cids)
         (update-in [:nodes] dissoc oid))))
 
@@ -384,7 +399,9 @@
   "Replaces nodes with given `ids` (assumed to be a full subtree) with
    the same nodes given new ids. This reflects changes in nodes values
    due to upstream mutation. The ordering of ids is maintained. Also,
-   output ids are remapped. Example: consider a subgraph like
+   output ids are remapped.
+
+   Example: consider a subgraph like
 
    a :in [_]
    b :in [a]
@@ -414,7 +431,8 @@
    fb :in [ea]
    gc :in [ea]
    hd :in [fb gc]
-"
+
+   So it maintains the original ordering."
   [gm ids]
   (let [idss (sort ids)
         newids (zipmap idss (repeatedly new-node-id))
@@ -426,8 +444,8 @@
     (update-in g [:out-ids] (partial replace newids))))
 
 (defn exchange-node
-  "Exchanges an existing node with id `oid` with a new node (assigned
-   a new id). Any ids `ds` downstream of the existing node are
+  "Exchanges an existing node with id `oid` with a new node, assigned
+   a new id. Any ids `ds` (downstream of the existing node) are
    remapped to the new node if its type is compatible, or to a
    randomly chosen new parent otherwise. If a new type-compatible
    parent can not be found, the children are discarded and the same
@@ -456,21 +474,27 @@
           ;; downstream nodes and add new random ones
           (let [g (-> gm
                       (update-in [:nodes] (fn [nds] (apply dissoc nds oid dsx)))
-                      (add-node [id nd])
+                      (add-node id nd)
                       (add-rand-nodes (count dsx)))
                 outs (:out-ids g)]
-            (reduce (fn [g [j jid]]
-                      (if (ds jid) ;; if output index j was discarded
-                        ;; TODO: what if no more nodes of a required type?
-                        (mutate-out-id g j)
-                        g))
-                    g (map-indexed vector outs))))))))
+            (try
+              (reduce (fn [g [j jid]]
+                        (if (ds jid) ;; if output index j was discarded
+                          (mutate-out-id g j)
+                          g))
+                      g (map-indexed vector outs))
+              (catch IllegalStateException e
+                ;; there are no more nodes of a required output type
+                ;; so abort the mutation
+                gm))))))))
 
 (defn mutate-node
-  "Mutates node `id`, choosing uniformly between mutating the function
-   itself and any one of its input links. The affected subtree is
-   replaced with new node ids, maintaining the immutability of nodes.
-   We avoid links to downstream nodes which would create cycles."
+  "Mutates node `id`, choosing evenly between mutating the function
+   itself or one of its input links (if any). In this way functions
+   have equal likelihood of being replaced regardless of their arity.
+   The affected subtree is replaced with new node ids, maintaining the
+   immutability of nodes. We avoid links to downstream nodes which
+   would create cycles."
   [gm id]
   (let [nd (get-in gm [:nodes id])
         ds (dependent-nodes gm id)
@@ -478,28 +502,29 @@
         in (:in nd)
         tys (:arg-types nd)
         ;; what to mutate - fn itself or which input
-        j (gen/uniform -1 (count in))
-        nnd (if (== j -1)
+        nnd (if (gen/boolean)
               ;; mutate function itself, partially preserving input links
-              (let [[_ rnd] (rand-node gm)
+              (let [rnd (rand-node gm)
                     ntys (:arg-types rnd)]
                 (let [newin (links-based-on oknodes ntys tys in)]
                   (if-not newin
                     nil ;; link failure
                     (assoc rnd :in newin))))
-              ;; otherwise - mutate input link j
-              (let [jty (get-in nd [:arg-types j])
-                    jid (rand-typed-link oknodes jty)]
-                (if-not jid
-                  nil ;; link failure
-                  (assoc-in nd [:in j] jid))))]
+              ;; otherwise - mutate an input link j
+              (when (seq in) ;; if any args
+                (let [j (gen/uniform 0 (count in))
+                      jty (get-in nd [:arg-types j])
+                      jid (rand-typed-link oknodes jty)]
+                  (if-not jid
+                    nil ;; link failure
+                    (assoc-in nd [:in j] jid)))))]
     (if-not nnd
       gm ;; link failure; skip mutation
       (exchange-node gm id nnd ds))))
 
 (defn mutate
-  "In effect, mutates nodes of the genome as in normal CGP. Possible
-   modifications are:
+  "In effect, mutates nodes of the genome similar to normal CGP.
+   Possible modifications are:
 
    * change one of the input links of a function node;
    * change a node to another of the same type (partially preserving
@@ -514,8 +539,8 @@
   [{:as gm :keys [nodes out-ids options]}]
   (let [node-mut-rate (or (:node-mut-rate options) 0.03)
         all (set (keys (:nodes gm)))
-        ins (set (:in-ids gm))
-        oks (set/difference all ins)
+        fixed (set (concat (:in-ids gm) (:const-ids gm)))
+        oks (set/difference all fixed)
         g (reduce (fn [g j]
                     (if (< (gen/double) node-mut-rate)
                       (mutate-out-id g j)
@@ -523,15 +548,7 @@
                   gm (range (count out-ids)))
         g2 (reduce (fn [g id]
                      (if (< (gen/double) node-mut-rate)
-                       (do
-                         ;(println "Mutating node" id)
-                         ;(println "Old nodes:")
-                         ;(prn (:nodes g))
-                         (let [x (mutate-node g id)]
-                           ;(println "New nodes:")
-                           ;(prn (:nodes x))
-                           x)
-                         )
+                       (mutate-node g id)
                        g))
                    g
                    ;; mutate ids in decreasing order so remaining ids are not
