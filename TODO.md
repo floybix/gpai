@@ -18,8 +18,12 @@
 * use expresso to simplify evolved arithmetic expressions
   * specify rules for language sets
 
+* datomic storage of population histories?
+
 
 ## methods
+
+* empirically compare icgp to cgp
 
 * icgp
   * fuse / crossover (merge nodes, crossover out-ids)

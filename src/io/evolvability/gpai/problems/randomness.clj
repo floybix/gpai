@@ -1,22 +1,24 @@
 (ns io.evolvability.gpai.problems.randomness
-  "A zero-sum game of mimicry vs discrimination - for co-evolution.
+  "A zero-sum game of mimicry vs discrimination, as an example of
+   co-evolution.
 
-   The Generator population are to generate a sequence of integer
-   values. The opposing Discriminator population are to distinguish
-   the Generators' sequences from others derived from an actual Random
+   There are two opposing populations, the Generators and the
+   Discriminators. The Generators have to generate a sequence of
+   integer values. The opposing Discriminators have to distinguish the
+   Generators' sequences from others derived from an actual Random
    Number Generator.
 
    A typical duel is run as follows. The Generator makes up 16
    sequences, each of length 16, of integers in the range 0 to
-   1024 (magnitude). The Generator is passed a seed for each
+   1024 (`magnitude`). The Generator is passed a seed for each
    sequence starting at 0 and incrementing by 1. A similar set of a
    sequences are built by a Random Number Generator. The Discriminator
    is then presented with these one at a time and responds with
    numeric scores. The higher score from evaluating a pair of
-   sequences indicates the one determined as non-random (a
+   sequences indicates the one predicted as being non-random (a
    Generator's). The Discriminator's fitness value is the number of
-   correct choices minus the number of incorrect choices. The
-   Generator's fitness value is the same negated.
+   correct choices minus the number of incorrect choices.
+   Symmetrically, the Generator's fitness value is the same negated.
 
    A Generator function produces one element at a time. It takes as
    input a single integer seed, and returns both an output integer and
@@ -25,15 +27,15 @@
    the valid range by taking their absolute value and modulus by 1024.
 
    A Discriminator function also works one element at a time. It runs
-   in a `reduce` operation over the input integer sequence. A further
-   6 integers are allowed for carry-over state. I.e. the function
-   takes 7 arguments. It also returns 7 integers: the first is taken
-   as the function output on the final iteration (otherwise it is
-   ignored) and the remaining 6 integers are carried over to the next
-   iteration. These state arguments are initially 0."
+   within a `reduce` operation over the input integer sequence. A
+   further 6 integers are allowed for carry-over state. I.e. the
+   function takes 7 arguments. It also returns 7 integers: the first
+   is taken as the function output on the final iteration (otherwise
+   it is ignored) and the remaining 6 integers are carried over to the
+   next iteration. These state arguments are initially 0."
   (:require [clojure.data.generators :as gen]))
 
-;; Note this is an example only, number of inputs be varied.
+;; Note this is an example only, number of inputs can be varied.
 (def discriminator-inputs '[x i1 i2 i3 i4 i5 i6])
 
 (def generator-inputs '[seed])
