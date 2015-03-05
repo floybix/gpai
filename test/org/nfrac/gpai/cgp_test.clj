@@ -43,12 +43,12 @@
 
 (def gm1-expr
   '(clojure.core/fn
-     [nd-0_ nd-1_ nd-2_]
+     [a b c]
      (clojure.core/let
          [nd-4_ 6.38965609827303
           nd-6_ 5.79469347837637
-          nd-10_ (org.nfrac.gpai.lang-float/_-_ nd-2_ nd-2_)
-          nd-13_ (org.nfrac.gpai.lang-float/_div_ nd-2_ nd-4_)
+          nd-10_ (org.nfrac.gpai.lang-float/_-_ c c)
+          nd-13_ (org.nfrac.gpai.lang-float/_div_ c nd-4_)
           nd-14_ (org.nfrac.gpai.lang-float/_-_ nd-10_ nd-10_)
           nd-15_ (org.nfrac.gpai.lang-float/_+_ nd-6_ nd-13_)]
        [nd-14_ nd-15_])))

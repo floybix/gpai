@@ -134,20 +134,25 @@
    This is like a macro, but at runtime."
   [{:as gm :keys [nodes out-ids inputs options]}]
   (let [data-type (:data-type options nil)
-        size (count nodes)
         n-in (count inputs)
         active (sort (seq (active-ids gm)))
-        ndsym (fn [id] (symbol (str "nd-" id "_")))
-        args (mapv ndsym (range n-in))
+        insyms (mapv symbol inputs)
+        ndsym (fn [i]
+                (if (< i n-in)
+                  (get insyms i)
+                  (symbol (str "nd-" i "_"))))
         ;; can do primitive declarations on up to 4 args (clojure limit)
-        prim-args? (and data-type (<= (count args) 4))
+        prim-args? (and data-type (<= (count inputs) 4))
         args (if prim-args?
-               (mapv #(vary-meta % assoc :tag data-type) args)
-               args)
+               (mapv #(vary-meta % assoc :tag data-type) insyms)
+               ;; variadic args (allows > 20 arity)
+               (if (<= (count insyms) 20)
+                 insyms
+                 ['& insyms]))
         ;; otherwise can do hints/casts on inputs: (long x) or (double x)
         init-lets (if (and data-type (not prim-args?))
-                    (mapcat #(list % (list data-type %)) args)
-                    [])
+                    (mapcat (fn [s] [s `(~data-type ~s)]) insyms)
+                    nil)
         lets (loop [lets (vec init-lets)
                     more (drop-while #(< % n-in) active)]
                (if-let [i (first more)]

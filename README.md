@@ -4,8 +4,6 @@ Genetic Programming for Artificial Intelligence. _[n. jee-pai]_
 
 A Clojure library.
 
-Not ready to be used by anyone except me (yet)...
-
 This is intended for problems where the fitness function dominates the
 computation time. An example is a program controlling robot movement
 at each time step. It will be inefficient on toy problems common in

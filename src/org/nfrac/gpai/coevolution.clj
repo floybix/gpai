@@ -35,7 +35,7 @@
    value is its average over all parasites, since the number of
    parasites can vary over generations.
 
-   * `init-popn-a`is the initial :a population collection.
+   * `init-popn-a` is the initial :a population collection.
    * `init-popn-b` is the initial :b population collection.
    * fitness function is applied to two individuals in order [a b],
      and returns their respective fitness scores (a vector of 2
