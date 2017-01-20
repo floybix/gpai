@@ -57,41 +57,41 @@
    `:distil` is `stratified-basic-distil` and the default `:progress`
    is `stratified-print-progress`."
   ([init-popn-a init-popn-b fitness parasites-fn regenerate options]
-     (coevolve init-popn-a init-popn-b fitness parasites-fn
-               regenerate regenerate options))
+   (coevolve init-popn-a init-popn-b fitness parasites-fn
+             regenerate regenerate options))
   ([init-popn-a init-popn-b fitness parasites-fn
     regenerate-a regenerate-b options]
-     (let [options (merge {:distil #'stratified-basic-distil
-                           :progress! #'stratified-print-progress}
-                          options)
+   (let [options (merge {:distil #'stratified-basic-distil
+                         :progress! #'stratified-print-progress}
+                        options)
            ;; we guarantee that fitness fn will be called with order [a b]
-           eval-fitness (fn [host parasites f]
-                          (let [fit (mean (map f parasites))]
-                            (evo/tag-fitness host fit)))
-           eval-fitness-a (fn [a-host parasites]
-                            (eval-fitness a-host parasites
-                                          #(first (fitness a-host %))))
-           eval-fitness-b (fn [b-host parasites]
-                            (eval-fitness b-host parasites
-                                          #(second (fitness % b-host))))
-           brand (fn [id x] (vary-meta x assoc ::popn id))
-           brand-all (fn [id xs] (map (partial brand id) xs))
-           init-popn (concat (brand-all :a init-popn-a)
-                             (brand-all :b init-popn-b))
-           eval-popn (fn [xs prev-xs history]
-                       (let [strata (group-by (comp ::popn meta) xs)
-                             pstrata (group-by (comp ::popn meta) prev-xs)
-                             a-paras (parasites-fn (or (:a pstrata) (:a strata))
-                                                   history :a)
-                             b-paras (parasites-fn (or (:b pstrata) (:b strata))
-                                                   history :b)]
-                         (concat (map #(eval-fitness-a % b-paras) (:a strata))
-                                 (map #(eval-fitness-b % a-paras) (:b strata)))))
-           regenerate (fn [xs]
-                        (let [strata (group-by (comp ::popn meta) xs)]
-                          (concat (brand-all :a (regenerate-a (:a strata)))
-                                  (brand-all :b (regenerate-b (:b strata))))))]
-       (evo/evolve-discrete init-popn eval-popn regenerate options))))
+         eval-fitness (fn [host parasites f]
+                        (let [fit (mean (map f parasites))]
+                          (evo/tag-fitness host fit)))
+         eval-fitness-a (fn [a-host parasites]
+                          (eval-fitness a-host parasites
+                                        #(first (fitness a-host %))))
+         eval-fitness-b (fn [b-host parasites]
+                          (eval-fitness b-host parasites
+                                        #(second (fitness % b-host))))
+         brand (fn [id x] (vary-meta x assoc ::popn id))
+         brand-all (fn [id xs] (map (partial brand id) xs))
+         init-popn (concat (brand-all :a init-popn-a)
+                           (brand-all :b init-popn-b))
+         eval-popn (fn [xs prev-xs history]
+                     (let [strata (group-by (comp ::popn meta) xs)
+                           pstrata (group-by (comp ::popn meta) prev-xs)
+                           a-paras (parasites-fn (or (:a pstrata) (:a strata))
+                                                 history :a)
+                           b-paras (parasites-fn (or (:b pstrata) (:b strata))
+                                                 history :b)]
+                       (concat (map #(eval-fitness-a % b-paras) (:a strata))
+                               (map #(eval-fitness-b % a-paras) (:b strata)))))
+         regenerate (fn [xs]
+                      (let [strata (group-by (comp ::popn meta) xs)]
+                        (concat (brand-all :a (regenerate-a (:a strata)))
+                                (brand-all :b (regenerate-b (:b strata))))))]
+     (evo/evolve-discrete init-popn eval-popn regenerate options))))
 
 (defn basic-parasites-fn
   "Returns a basic parasites selection function that gives the top n
@@ -138,6 +138,5 @@
    second.
    Returns the successive dominant strategies as a sequence of
    [generation-number individual popn-id]."
-  [a-champions b-champions superiority-fn]
+  [a-champions b-champions superiority-fn])
   ;; TODO
-  )

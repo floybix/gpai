@@ -16,8 +16,8 @@
     [min 2]
     [max 2]
     [if< 4]
-    [if= 4]
-    ])
+    [if= 4]])
+
 
 (defn abs
   ^long [^long x]

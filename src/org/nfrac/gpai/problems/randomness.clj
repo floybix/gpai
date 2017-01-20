@@ -91,9 +91,9 @@
         gos (map run-disc gs)
         ros (map run-disc rs)
         scores (map (fn [go ro] (cond
-                                (> go ro) 1
-                                (< go ro) -1
-                                :else 0))
+                                 (> go ro) 1
+                                 (< go ro) -1
+                                 :else 0))
                     gos ros)
         score (reduce + scores)]
     ;; return [generator-fitness discriminator-fitness]

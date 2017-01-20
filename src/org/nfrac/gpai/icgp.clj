@@ -83,19 +83,19 @@
 (defn const-node
   "Returns a new constant or input node."
   ([value type]
-     (const-node value type 0))
+   (const-node value type 0))
   ([value type t]
-     (node {:value value
-            :type type} t)))
+   (node {:value value
+          :type type} t)))
 
 (defn add-node
   "Adds a node to the genome. If its id is not given a new unique id
    is generated. The node may reference existing nodes. This does not
    alter the genome output because out-ids is unchanged."
   ([gm node]
-     (add-node gm (new-node-id) node))
+   (add-node gm (new-node-id) node))
   ([gm id node]
-     (assoc-in gm [:nodes id] node)))
+   (assoc-in gm [:nodes id] node)))
 
 (defn empty-genome
   "Returns a genome consisting only of input and constant nodes. It is
@@ -318,16 +318,16 @@
    of a compatible type. Throws IllegalStateException if a compatible
    node does not exist."
   ([gm]
-     (let [j (gen/rand-nth (range (count (:out-ids gm))))]
-       (mutate-out-id gm j)))
+   (let [j (gen/rand-nth (range (count (:out-ids gm))))]
+     (mutate-out-id gm j)))
   ([{:as gm :keys [nodes out-types]} j]
-     (let [type (nth out-types j)
-           oid (rand-typed-link nodes type)]
-       (when (nil? oid)
-         (throw (IllegalStateException.
-                 (str "Could not find a node of out type " type))))
-       (-> (update-in gm [:out-ids] assoc j oid)
-           (recache)))))
+   (let [type (nth out-types j)
+         oid (rand-typed-link nodes type)]
+     (when (nil? oid)
+       (throw (IllegalStateException.
+               (str "Could not find a node of out type " type))))
+     (-> (update-in gm [:out-ids] assoc j oid)
+         (recache)))))
 
 (defn init-out-ids
   "Resets all out-ids to valid ids."
@@ -407,25 +407,25 @@
    b :in [a]
    c :in [a]
    d :in [b c]
-  
+
    exchange-one-node a ea
    b :in [ea]
    c :in [ea]
    d :in [b c]
    ea :in [_]
-  
+
    exchange-one-node b fb
    c :in [ea]
    d :in [fb c]
    ea :in [_]
    fb :in [ea]
-  
+
    exchange-one-node c gc
    d :in [fb gc]
    ea :in [_]
    fb :in [ea]
    gc :in [ea]
-  
+
    exchange-one-node d hd
    ea :in [_]
    fb :in [ea]

@@ -7,7 +7,7 @@
    The Santa Fe Trail consists of 144 squares with 21 turns, and the
    89 units of food are distributed non-uniformly along it. The Ant
    starts in the upper left cell of the grid (0, 0) facing east."
-"
+ "
 .111............................
 ...1............................
 ...1....................011100..

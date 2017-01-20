@@ -15,8 +15,8 @@
     [_mod_ 2]
     [min 2]
     [max 2]
-    [if< 4]
-    ])
+    [if< 4]])
+
 
 (defn abs
   ^double [^double x]

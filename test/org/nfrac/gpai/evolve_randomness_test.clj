@@ -136,5 +136,4 @@
           (println "generator:" gen-inm)
           (pp/pprint (cgp/genome->expr gen))
           (println "discriminator:" disc-inm)
-          (pp/pprint (cgp/genome->expr disc)))
-        ))))
+          (pp/pprint (cgp/genome->expr disc)))))))

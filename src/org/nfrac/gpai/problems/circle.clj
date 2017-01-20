@@ -38,8 +38,8 @@
   [s rs f]
   (let [inputs (grid-inputs s rs)
         dat (map (fn [[r y x]] {:r r, :y y, :x x
-                               :actual (actual-fn r y x)
-                               :output (f r y x)})
+                                :actual (actual-fn r y x)
+                                :output (f r y x)})
                  inputs)
         hitchar (fn [{:keys [output actual]}]
                   (condp = [output actual]
