@@ -64,16 +64,18 @@
    (let [options (merge {:distil #'stratified-basic-distil
                          :progress! #'stratified-print-progress}
                         options)
-           ;; we guarantee that fitness fn will be called with order [a b]
+         ;; avoid calling fitness twice with same individuals
+         fitness* (memoize fitness)
+         ;; we guarantee that fitness fn will be called with order [a b]
          eval-fitness (fn [host parasites f]
                         (let [fit (mean (map f parasites))]
                           (evo/tag-fitness host fit)))
          eval-fitness-a (fn [a-host parasites]
                           (eval-fitness a-host parasites
-                                        #(first (fitness a-host %))))
+                                        #(first (fitness* a-host %))))
          eval-fitness-b (fn [b-host parasites]
                           (eval-fitness b-host parasites
-                                        #(second (fitness % b-host))))
+                                        #(second (fitness* % b-host))))
          brand (fn [id x] (vary-meta x assoc ::popn id))
          brand-all (fn [id xs] (map (partial brand id) xs))
          init-popn (concat (brand-all :a init-popn-a)
